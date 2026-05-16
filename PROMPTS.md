@@ -791,4 +791,60 @@ Additionally, I noticed that while the player's ship correctly called `triggerWe
 **Result:** Executed a sweeping directory restructure and terminology replacement.
 1. Moved all overarching game design and AI tester documentation (`CPU_ALGORITHMS.md`, `GAME_CRITIQUE.md`, `GAME_DETAILS.md`, `MECHANICS.md`, `designInfo.md`, `game_tester_agent.md`, `AIStudio_Prompt.md`, `PROGRESS_REPORT_1.md`, `PROGRESS_REPORT_2.md`, `spawns.txt`) into a centralized `/docs/game_design/` subfolder.
 2. Migrated `unzip.js` into a `/scripts/` folder structure, and cleaned redundant concept docs (`IDEAS.md`).
-3. Renamed all primary references of "Void Fleet" and "Remix: Space Survival" to the exact string "Space Survival" universally across the UI interfaces, READMEs, Markdown documents (`manifest.json`, `index.html`, `metadata.json`, `package.json`).
+4. Renamed all primary references of "Void Fleet" and "Remix: Space Survival" to the exact string "Space Survival" universally across the UI interfaces, READMEs, Markdown documents (`manifest.json`, `index.html`, `metadata.json`, `package.json`).
+
+## 120. HUD Visual Alignment Corrections
+> "Fix the alignment"
+
+**Result:** Corrected highly specific visual alignment errors across the `GameCanvas.tsx` UI layers which caused the user interfaces to look skewed or pushed off-center:
+1.  **Typographic Centering:** Removed mathematical `tracking` offsets by adding precise reverse `pl-[0.3em]` padding to `WARNING` and `WAVE 01` texts. This ensures letter spacing is countered and completely centers the words within their geometric bounds.
+2.  **Container Transform Restoration:** Added missing `-translate-x-1/2` overrides to center elements matching inline CSS, cementing true responsive horizontal centering.
+3.  **Skew Conversion:** Completely refactored `clipPath: polygon(...)` to `transform: skewX(-10deg)` for the center `MUNITIONS` block and `SYS_PAUSE` block. Previously, the skewed layout clipped off one side unevenly but centered flex children as squares, heavily throwing text off-balance visually. Now, text applies a counter-skew of `10deg`, allowing perfect structural alignments that rest mathematically centered on the screen.
+4. **Transform Scaling Bugs Fix:** Fixed `style={{ transform: scale(uiScale) }}` overriding the Tailwind translation layer by combining them perfectly (i.e. `style={{ transform: translateY(-50%) scale(uiScale) }}`).
+
+## 121. Tactical Map Live Expand
+> "I want that when the mini- map is clicked, it views the whole map and makes sure it's real-time, no delay"
+
+**Result:** Extracted the minimap engine into a generalized `renderTacticalMap` function capable of drawing multiple resolutions at 60fps native within the same `requestAnimationFrame` game loop. 
+1. The right-side map is now bordered with a `cursor-pointer` trigger and interactive hover effects.
+2. Clicking the map injects a completely full-screen modal `z-[100]`, where the `expandedMinimapRef` operates live without input lag, frame dropping, or sync delays since it runs directly on the central update pipe.
+3. Added a detailed legend for the new full-screen map (Hostiles, Vipers, Ammo, Health, Player) tracking precisely over the grid boundary.
+
+## 122. Fix Map Overlay Overflow
+> "There's an issue here; the map is oversized, I think, because at the button its overlap"
+
+**Result:** Fixed a flexbox rendering artifact causing the expanded tactical map to infinitely stretch beyond the viewport and clip its own elements at the bottom:
+1. Applied strict `aspect-square` and bounding limits (`max-h-[70vh] flex-1`) so the map maintains perfect 1:1 world coordinate ratio without exploding flex-container layouts. 
+2. Corrected the grid-line looping logic (`Math.max()`) to ensure holographic lines reach the true bounds of the container regardless of resolution, preventing "ghost overlap" visuals in the empty void space.
+3. Synchronized the canvas intrinsic resolution with real `clientWidth/clientHeight` layout measurements to prevent the map scaling from getting stuck in progressive loop increments.
+4. Corrected the overlay header by adding `shrink-0` to the modal title/button layout so the canvas component doesn't push and clip underneath them on short screens.
+
+## 123. Concept Consolidation Demotion
+> "In the docs, make the idea one. If there are any questions, ask me, and then I will provide an answer. The goal is to keep the idea strong, not broad let's finalize this because later on we will be create a demo for this game"
+
+**Result:** Streamlined and consolidated all varying game documentation (MECHANICS.md, CPU_ALGORITHMS.md, GAME_DETAILS.md, designInfo.md, and multiple progress reports) into a single, cohesive master document named `GAME_CONCEPT.md`. Evaluated the technical boundaries of what can be realistically implemented into the demo and set rigid scope restraints centered purely on the Space Scheduler mechanics, resulting in a single "Strong, Not Broad" creative vision point.
+
+## 124. Game Over UI Refresh
+> "delete this and adjust the buttons"
+
+**Result:** Removed the descriptive sub-paragraph on the Game Over screen based on the focus-mode selector, and re-styled the entire Game Over modal and buttons. Converted the rounded corners to strict cyberpunk clips (`polygon`) and adapted the standard button layout to a tactical layout with distinct hover states.
+
+## 125. Game Demo Walkthrough
+> "Now, create an MD file at docs with the name gameDemo here the sample format for the demo: ... "
+
+**Result:** Created `docs/gameDemo.md` adopting the provided sample format to build a "Sector Alpha" execution walkthrough for "Void OS: Space Scheduler". Completed the document detailing the loadout preparation, step-by-step guidance on dealing with FCFS and RR algorithm pacing, boss fight maneuvers for "The Dreadnought", and the respective rewards/loot received upon completion.
+
+## 126. Game Demo Walkthrough Continued
+> "continue it"
+
+**Result:** Continued the `docs/gameDemo.md` walkthrough guide by expanding it with the "Sector Beta: The HRRN Protocol Walkthrough", utilizing the exact same format established by the user. Documented the progression into HRRN scheduling logic, the new Overlord boss fight mechanics, and the strategic countermeasures related to algorithmic shifting.
+
+## 127. Complete Walkthrough Guide
+> "complete all the guide"
+
+**Result:** Finalized the `docs/gameDemo.md` document by adding the concluding "Sector Gamma Walkthrough". Detailed the shift towards dynamic Multi-Level Queue Swarms, environmental hazards (EMP logic lockouts), and the ultimate final boss battle ("The Kla'ed Sovereign"), capping off the documentation with the final rewards signifying campaign completion.
+
+## 128. Final Game Name Update
+> "The final game name is Space Survival. its final"
+
+**Result:** Updated all project references, including documentation files (`GAME_CONCEPT.md` and `gameDemo.md`) to officially rename the game to "Space Survival" replacing "Void OS" or "Void OS: Space Scheduler". The UI references, metadata, and HTML title have all been aligned to the final name.

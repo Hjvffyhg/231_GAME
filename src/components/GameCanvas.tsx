@@ -40,6 +40,8 @@ export function GameCanvas({ gameKey, onGameOver, onReturnMenu, civilizationLeve
   const algoStatsRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
+  const expandedMinimapRef = useRef<HTMLCanvasElement>(null);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
   const ammoRef = useRef<HTMLSpanElement>(null);
   const shieldRef = useRef<HTMLDivElement>(null);
   const shieldTextRef = useRef<HTMLSpanElement>(null);
@@ -3036,130 +3038,142 @@ export function GameCanvas({ gameKey, onGameOver, onReturnMenu, civilizationLeve
         }
         ctx.restore(); // restore camera bounds
 
-        // Minimap / Tactical Radar
-        const mCanvas = minimapRef.current;
-        if (mCanvas) {
+        // Minimap / Tactical Radar Rendering
+        const renderTacticalMap = (mCanvas: HTMLCanvasElement | null, expanded: boolean) => {
+           if (!mCanvas) return;
            const mCtx = mCanvas.getContext('2d');
-           if (mCtx) {
-              const now = performance.now() / 1000;
-              mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
-              
-              // Background Base
-              mCtx.fillStyle = '#020617';
-              mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
-
-              // Holographic Grid Lines
-              mCtx.strokeStyle = 'rgba(6, 182, 212, 0.1)';
-              mCtx.lineWidth = 1;
-              for(let i=0; i<mCanvas.width; i+=20) {
-                  mCtx.beginPath(); mCtx.moveTo(i, 0); mCtx.lineTo(i, mCanvas.height); mCtx.stroke();
-                  mCtx.beginPath(); mCtx.moveTo(0, i); mCtx.lineTo(mCanvas.width, i); mCtx.stroke();
+           if (!mCtx) return;
+           
+           if (expanded) {
+              const tw = mCanvas.clientWidth;
+              const th = mCanvas.clientHeight;
+              if (tw > 0 && th > 0 && (mCanvas.width !== tw || mCanvas.height !== th)) {
+                  mCanvas.width = tw;
+                  mCanvas.height = th;
               }
-              
-              // Safe Zone Boundary (Earth Defense Perimeter)
-              const smx = (150 / MAP_WIDTH) * mCanvas.width;
-              const smy = (150 / MAP_HEIGHT) * mCanvas.height;
-              const smw = ((MAP_WIDTH - 300) / MAP_WIDTH) * mCanvas.width;
-              const smh = ((MAP_HEIGHT - 300) / MAP_HEIGHT) * mCanvas.height;
-              mCtx.strokeStyle = 'rgba(245, 158, 11, 0.3)'; // Amber dashed line
-              mCtx.setLineDash([2, 4]);
-              mCtx.strokeRect(smx, smy, smw, smh);
-              mCtx.setLineDash([]);
-              
-              // Dynamic Sweeping Radar Beam
-              const sweepAngle = (now * 2.5) % (Math.PI * 2);
-              const mxCenter = mCanvas.width / 2;
-              const myCenter = mCanvas.height / 2;
-              const radius = mCanvas.width * 0.8;
+           }
+           
+           const now = performance.now() / 1000;
+           mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+           
+           // Background Base
+           mCtx.fillStyle = '#020617';
+           mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
 
-              mCtx.save();
-              mCtx.translate(mxCenter, myCenter);
-              mCtx.rotate(sweepAngle);
+           // Holographic Grid Lines
+           mCtx.strokeStyle = 'rgba(6, 182, 212, 0.1)';
+           mCtx.lineWidth = 1;
+           for(let i=0; i<mCanvas.width; i+=20) {
+               mCtx.beginPath(); mCtx.moveTo(i, 0); mCtx.lineTo(i, mCanvas.height); mCtx.stroke();
+               mCtx.beginPath(); mCtx.moveTo(0, i); mCtx.lineTo(mCanvas.width, i); mCtx.stroke();
+           }
+           
+           // Safe Zone Boundary (Earth Defense Perimeter)
+           const smx = (150 / MAP_WIDTH) * mCanvas.width;
+           const smy = (150 / MAP_HEIGHT) * mCanvas.height;
+           const smw = ((MAP_WIDTH - 300) / MAP_WIDTH) * mCanvas.width;
+           const smh = ((MAP_HEIGHT - 300) / MAP_HEIGHT) * mCanvas.height;
+           mCtx.strokeStyle = 'rgba(245, 158, 11, 0.3)'; // Amber dashed line
+           mCtx.setLineDash([2, 4]);
+           mCtx.strokeRect(smx, smy, smw, smh);
+           mCtx.setLineDash([]);
+           
+           // Dynamic Sweeping Radar Beam
+           const sweepAngle = (now * 2.5) % (Math.PI * 2);
+           const mxCenter = mCanvas.width / 2;
+           const myCenter = mCanvas.height / 2;
+           const radius = mCanvas.width * 0.8;
+
+           mCtx.save();
+           mCtx.translate(mxCenter, myCenter);
+           mCtx.rotate(sweepAngle);
+           
+           const radarGrad = mCtx.createConicGradient(0, 0, 0);
+           radarGrad.addColorStop(0, 'rgba(6, 182, 212, 0.4)');
+           radarGrad.addColorStop(0.1, 'rgba(6, 182, 212, 0)');
+           radarGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+           
+           mCtx.fillStyle = radarGrad;
+           mCtx.beginPath();
+           mCtx.moveTo(0, 0);
+           mCtx.arc(0, 0, radius, 0, Math.PI / 2);
+           mCtx.fill();
+           mCtx.restore();
+
+           // Draw Enemies (Red/Rose Blips)
+           state.enemies.forEach((e: any) => {
+              const mx = (e.x / MAP_WIDTH) * mCanvas.width;
+              const my = (e.y / MAP_HEIGHT) * mCanvas.height;
               
-              const radarGrad = mCtx.createConicGradient(0, 0, 0);
-              radarGrad.addColorStop(0, 'rgba(6, 182, 212, 0.4)');
-              radarGrad.addColorStop(0.1, 'rgba(6, 182, 212, 0)');
-              radarGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+              const isActive = state.drones.some((d: any) => d.targetId === e.id);
+              const isBoss = e.type.startsWith('boss');
               
-              mCtx.fillStyle = radarGrad;
+              mCtx.fillStyle = isActive ? '#00D9FF' : (isBoss ? '#ec4899' : '#f43f5e');
+              mCtx.shadowBlur = isActive || isBoss ? 10 : 4;
+              mCtx.shadowColor = mCtx.fillStyle;
+              
               mCtx.beginPath();
-              mCtx.moveTo(0, 0);
-              mCtx.arc(0, 0, radius, 0, Math.PI / 2);
-              mCtx.fill();
-              mCtx.restore();
-
-              // Draw Enemies (Red/Rose Blips)
-              state.enemies.forEach((e: any) => {
-                 const mx = (e.x / MAP_WIDTH) * mCanvas.width;
-                 const my = (e.y / MAP_HEIGHT) * mCanvas.height;
-                 
-                 const isActive = state.drones.some((d: any) => d.targetId === e.id);
-                 const isBoss = e.type.startsWith('boss');
-                 
-                 mCtx.fillStyle = isActive ? '#00D9FF' : (isBoss ? '#ec4899' : '#f43f5e');
-                 mCtx.shadowBlur = isActive || isBoss ? 10 : 4;
-                 mCtx.shadowColor = mCtx.fillStyle;
-                 
-                 mCtx.beginPath();
-                 mCtx.arc(mx, my, isBoss ? 4 : (isActive ? 2.5 : 1.5), 0, Math.PI * 2);
-                 mCtx.fill();
-                 mCtx.shadowBlur = 0;
-                 
-                 // Give bosses a secondary ping ring
-                 if (isBoss) {
-                     mCtx.strokeStyle = '#ec4899';
-                     mCtx.beginPath();
-                     mCtx.arc(mx, my, 6 + Math.sin(now * 5) * 2, 0, Math.PI * 2);
-                     mCtx.stroke();
-                 }
-              });
-
-              // Collectibles (Amber/Green/Blue Blips)
-              state.collectibles.forEach((c: any) => {
-                 const cx = (c.x / MAP_WIDTH) * mCanvas.width;
-                 const cy = (c.y / MAP_HEIGHT) * mCanvas.height;
-                 let mColor = '#F59E0B'; // Ammo
-                 if (c.type === 'health') mColor = '#10b981';
-                 else if (c.type === 'shield') mColor = '#3b82f6';
-                 else if (c.type === 'weapon') mColor = '#dc2626';
-                 
-                 mCtx.fillStyle = mColor;
-                 mCtx.shadowBlur = 6;
-                 mCtx.shadowColor = mColor;
-                 mCtx.fillRect(cx - 1.5, cy - 1.5, 3, 3);
-                 mCtx.shadowBlur = 0;
-              });
-
-              // Draw Player (Bright Cyan Core)
-              const px = (state.player.x / MAP_WIDTH) * mCanvas.width;
-              const py = (state.player.y / MAP_HEIGHT) * mCanvas.height;
-              mCtx.fillStyle = '#ffffff';
-              mCtx.shadowBlur = 12;
-              mCtx.shadowColor = '#22d3ee'; // Cyan glow
-              mCtx.beginPath();
-              mCtx.arc(px, py, 2.5, 0, Math.PI * 2);
+              mCtx.arc(mx, my, isBoss ? 4 : (isActive ? 2.5 : 1.5), 0, Math.PI * 2);
               mCtx.fill();
               mCtx.shadowBlur = 0;
               
-              // Viewport Rect (Shows what the camera sees on the map)
-              const vx = (cameraX / MAP_WIDTH) * mCanvas.width;
-              const vy = (cameraY / MAP_HEIGHT) * mCanvas.height;
-              const vw = (canvas.width / MAP_WIDTH) * mCanvas.width;
-              const vh = (canvas.height / MAP_HEIGHT) * mCanvas.height;
+              // Give bosses a secondary ping ring
+              if (isBoss) {
+                  mCtx.strokeStyle = '#ec4899';
+                  mCtx.beginPath();
+                  mCtx.arc(mx, my, 6 + Math.sin(now * 5) * 2, 0, Math.PI * 2);
+                  mCtx.stroke();
+              }
+           });
+
+           // Collectibles (Amber/Green/Blue Blips)
+           state.collectibles.forEach((c: any) => {
+              const cx = (c.x / MAP_WIDTH) * mCanvas.width;
+              const cy = (c.y / MAP_HEIGHT) * mCanvas.height;
+              let mColor = '#F59E0B'; // Ammo
+              if (c.type === 'health') mColor = '#10b981';
+              else if (c.type === 'shield') mColor = '#3b82f6';
+              else if (c.type === 'weapon') mColor = '#dc2626';
               
-              mCtx.strokeStyle = 'rgba(34, 211, 238, 0.4)'; // Cyan viewport
-              mCtx.lineWidth = 1;
-              mCtx.strokeRect(vx, vy, vw, vh);
-              
-              // Crosshairs framing the viewport
-              mCtx.beginPath();
-              mCtx.moveTo(vx + vw/2, vy - 2); mCtx.lineTo(vx + vw/2, vy + 2); // Top tick
-              mCtx.moveTo(vx + vw/2, vy + vh - 2); mCtx.lineTo(vx + vw/2, vy + vh + 2); // Bot tick
-              mCtx.moveTo(vx - 2, vy + vh/2); mCtx.lineTo(vx + 2, vy + vh/2); // Left tick
-              mCtx.moveTo(vx + vw - 2, vy + vh/2); mCtx.lineTo(vx + vw + 2, vy + vh/2); // Right tick
-              mCtx.stroke();
-           }
-        }
+              mCtx.fillStyle = mColor;
+              mCtx.shadowBlur = 6;
+              mCtx.shadowColor = mColor;
+              mCtx.fillRect(cx - 1.5, cy - 1.5, 3, 3);
+              mCtx.shadowBlur = 0;
+           });
+
+           // Draw Player (Bright Cyan Core)
+           const px = (state.player.x / MAP_WIDTH) * mCanvas.width;
+           const py = (state.player.y / MAP_HEIGHT) * mCanvas.height;
+           mCtx.fillStyle = '#ffffff';
+           mCtx.shadowBlur = 12;
+           mCtx.shadowColor = '#22d3ee'; // Cyan glow
+           mCtx.beginPath();
+           mCtx.arc(px, py, 2.5, 0, Math.PI * 2);
+           mCtx.fill();
+           mCtx.shadowBlur = 0;
+           
+           // Viewport Rect (Shows what the camera sees on the map)
+           const vx = (cameraX / MAP_WIDTH) * mCanvas.width;
+           const vy = (cameraY / MAP_HEIGHT) * mCanvas.height;
+           const vw = (canvas.width / MAP_WIDTH) * mCanvas.width;
+           const vh = (canvas.height / MAP_HEIGHT) * mCanvas.height;
+           
+           mCtx.strokeStyle = 'rgba(34, 211, 238, 0.4)'; // Cyan viewport
+           mCtx.lineWidth = 1;
+           mCtx.strokeRect(vx, vy, vw, vh);
+           
+           // Crosshairs framing the viewport
+           mCtx.beginPath();
+           mCtx.moveTo(vx + vw/2, vy - 2); mCtx.lineTo(vx + vw/2, vy + 2); // Top tick
+           mCtx.moveTo(vx + vw/2, vy + vh - 2); mCtx.lineTo(vx + vw/2, vy + vh + 2); // Bot tick
+           mCtx.moveTo(vx - 2, vy + vh/2); mCtx.lineTo(vx + 2, vy + vh/2); // Left tick
+           mCtx.moveTo(vx + vw - 2, vy + vh/2); mCtx.lineTo(vx + vw + 2, vy + vh/2); // Right tick
+           mCtx.stroke();
+        };
+
+        renderTacticalMap(minimapRef.current, false);
+        renderTacticalMap(expandedMinimapRef.current, true);
     };
 
     initAssets();
@@ -3209,10 +3223,10 @@ export function GameCanvas({ gameKey, onGameOver, onReturnMenu, civilizationLeve
       </div>
 
       {/* Top Center: Mission Telemetry */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-10 w-48 origin-top" style={{ transform: `translateX(-50%) scale(${uiScale})` }}>
+      <div className="absolute top-4 left-1/2 flex flex-col items-center pointer-events-none z-10 w-48 origin-top" style={{ transform: `translateX(-50%) scale(${uiScale})` }}>
         <div className="bg-cyan-950/40 border border-cyan-500/30 backdrop-blur-md px-6 py-2 flex flex-col items-center shadow-[0_0_20px_rgba(6,182,212,0.15)] w-full relative" style={{ clipPath: 'polygon(5% 0, 95% 0, 100% 100%, 0 100%)' }}>
-           <span className="text-[10px] text-cyan-400 font-mono font-bold tracking-[0.3em] uppercase mb-1">WAVE</span>
-           <span ref={waveRef} className="text-2xl font-black text-white font-mono leading-none tracking-widest drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">01</span>
+           <span className="text-[10px] text-cyan-400 font-mono font-bold tracking-[0.3em] uppercase mb-1" style={{ marginLeft: '0.3em' }}>WAVE</span>
+           <span ref={waveRef} className="text-2xl font-black text-white font-mono leading-none tracking-widest drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" style={{ marginLeft: '0.1em' }}>01</span>
         </div>
         <div className="bg-slate-900/60 border border-t-0 border-cyan-900/50 backdrop-blur-md px-6 py-1.5 flex flex-col items-center w-[90%]">
            <div className="flex justify-between w-full text-[10px] font-mono font-bold text-slate-300">
@@ -3228,16 +3242,22 @@ export function GameCanvas({ gameKey, onGameOver, onReturnMenu, civilizationLeve
 
       {/* Top Right: Tactical Radar & Algo */}
       <div className="absolute top-4 right-4 flex gap-4 pointer-events-none z-10 origin-top-right" style={{ transform: `scale(${uiScale})` }}>
-        <button onClick={togglePause} className="pointer-events-auto bg-slate-900/80 hover:bg-cyan-950 border border-cyan-900/50 hover:border-cyan-500 text-cyan-500 hover:text-cyan-300 px-3 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.1)] text-[10px] font-mono font-bold tracking-widest h-fit transition-all backdrop-blur-sm" style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}>
-          SYS_PAUSE
+        <button onClick={togglePause} className="pointer-events-auto bg-slate-900/80 hover:bg-cyan-950 border-l-4 border-r border-t border-b border-cyan-900/50 hover:border-cyan-500 text-cyan-500 hover:text-cyan-300 px-3 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.1)] text-[10px] font-mono font-bold tracking-widest h-fit transition-all backdrop-blur-sm" style={{ transform: 'skewX(-10deg)' }}>
+          <div style={{ transform: 'skewX(10deg)', paddingLeft: '0.1em' }}>SYS_PAUSE</div>
         </button>
-        <div className="flex flex-col items-end gap-2">
-           <div className="w-32 h-32 bg-slate-950/80 border border-cyan-500/30 p-1 flex items-center justify-center relative shadow-[0_0_20px_rgba(6,182,212,0.15)] backdrop-blur-md" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%)' }}>
-             <canvas ref={minimapRef} width={120} height={120} className="w-full h-full bg-[#020617] border border-cyan-900/50 relative" />
+        <div className="flex flex-col items-end gap-2 pointer-events-auto">
+           <div 
+             onClick={() => setIsMapExpanded(true)}
+             className="w-32 h-32 bg-slate-950/80 border border-cyan-500/30 p-1 flex items-center justify-center relative shadow-[0_0_20px_rgba(6,182,212,0.15)] backdrop-blur-md cursor-pointer hover:border-cyan-400/60 transition-colors group" 
+             style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%)' }}
+             title="Expand Tactical Map"
+           >
+             <canvas ref={minimapRef} width={120} height={120} className="w-full h-full block bg-[#020617] border border-cyan-900/50 relative group-hover:border-cyan-400/50 transition-colors" />
              <div className="absolute top-0 right-0 bg-cyan-500/20 w-4 h-4" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}></div>
+             <div className="absolute inset-0 bg-cyan-500/0 group-hover:bg-cyan-500/10 pointer-events-none transition-colors mix-blend-screen" />
            </div>
            
-           <div className="flex flex-col items-end gap-1.5 w-full mt-1">
+           <div className="flex flex-col items-end gap-1.5 w-full mt-1 pointer-events-none">
               <div className="bg-rose-950/60 border border-rose-500/40 px-3 py-1.5 shadow-[0_0_10px_rgba(244,63,94,0.1)] w-full text-right backdrop-blur-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10% 100%)' }}>
                  <span ref={targetsRef} className="text-[10px] text-rose-400 font-mono font-bold tracking-widest">TARGETS: 0</span>
               </div>
@@ -3266,9 +3286,9 @@ export function GameCanvas({ gameKey, onGameOver, onReturnMenu, civilizationLeve
 
       <div ref={notificationRef} className="absolute top-1/2 left-0 right-0 -translate-y-1/2 pointer-events-none z-50 flex flex-col items-center justify-center text-center opacity-0 transition-opacity duration-300 pointer-events-none"></div>
 
-      <div ref={bossWarningUIRef} className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50 flex flex-col items-center justify-center text-center opacity-0 transition-opacity duration-100" style={{ transform: `translate(-50%, -50%) scale(${uiScale})` }}>
-        <div className="text-4xl font-black text-rose-500 font-mono tracking-[0.3em] drop-shadow-[0_0_15px_rgba(244,63,94,1)] animate-pulse">WARNING</div>
-        <div className="text-sm font-bold text-white tracking-widest mt-2 uppercase bg-rose-500/20 px-8 py-1 border border-rose-500">MAJOR THREAT INCOMING</div>
+      <div ref={bossWarningUIRef} className="absolute top-1/3 left-1/2 pointer-events-none z-50 flex flex-col items-center justify-center text-center opacity-0 transition-opacity duration-100" style={{ transform: `translate(-50%, -50%) scale(${uiScale})` }}>
+        <div className="text-4xl font-black text-rose-500 font-mono tracking-[0.3em] drop-shadow-[0_0_15px_rgba(244,63,94,1)] animate-pulse" style={{ marginLeft: '0.3em' }}>WARNING</div>
+        <div className="text-sm font-bold text-white tracking-widest mt-2 uppercase bg-rose-500/20 px-8 py-1 border border-rose-500" style={{ marginLeft: '0.1em' }}>MAJOR THREAT INCOMING</div>
       </div>
 
       {/* Bottom: Desktop Weapons/Skills */}
@@ -3278,9 +3298,11 @@ export function GameCanvas({ gameKey, onGameOver, onReturnMenu, civilizationLeve
           <div ref={wpn2Ref}></div>
         </div>
 
-        <div className="bg-slate-900/80 px-4 lg:px-8 py-2 border-l-4 border-amber-500 flex flex-col items-center backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0" style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}>
-            <span className="text-[8px] lg:text-[9px] text-amber-500 font-mono font-bold tracking-[0.2em]">MUNITIONS</span>
-            <span className="text-xl lg:text-2xl font-mono text-white font-bold leading-none"><span ref={ammoRef}>150</span></span>
+        <div className="bg-slate-900/80 px-4 lg:px-8 py-2 border-l-4 border-amber-500 flex flex-col items-center backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0" style={{ transform: 'skewX(-10deg)' }}>
+            <div className="flex flex-col items-center" style={{ transform: 'skewX(10deg)' }}>
+                <span className="text-[8px] lg:text-[9px] text-amber-500 font-mono font-bold tracking-[0.2em]" style={{ marginLeft: '0.2em' }}>MUNITIONS</span>
+                <span className="text-xl lg:text-2xl font-mono text-white font-bold leading-none"><span ref={ammoRef}>150</span></span>
+            </div>
         </div>
 
         <div className="flex gap-1 md:gap-2 shrink-0">
@@ -3288,6 +3310,43 @@ export function GameCanvas({ gameKey, onGameOver, onReturnMenu, civilizationLeve
           <div ref={shdSkillRef}></div>
         </div>
       </div>
+      
+      {/* Expanded Tactical Map Overlay */}
+      {isMapExpanded && (
+        <div className="absolute inset-0 bg-slate-950/90 z-[100] p-6 md:p-12 flex flex-col pointer-events-auto backdrop-blur-md" onClick={(e) => {
+            if (e.target === e.currentTarget) setIsMapExpanded(false);
+        }}>
+            <div className="flex justify-between items-end mb-4 text-cyan-500 font-mono w-full max-w-5xl mx-auto shrink-0 z-10">
+                 <div className="flex flex-col">
+                     <span className="text-2xl tracking-[0.3em] uppercase font-bold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">TACTICAL MAP</span>
+                     <span className="text-[10px] tracking-widest text-cyan-500/70">REAL-TIME TELEMETRY // ENGAGED</span>
+                 </div>
+                 <button onClick={() => setIsMapExpanded(false)} className="text-cyan-400 hover:text-white px-4 py-2 border border-cyan-500/50 hover:bg-cyan-900/50 transition-colors uppercase tracking-widest text-xs tracking-[0.2em] shrink-0" style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}>
+                     [X] CLOSE
+                 </button>
+            </div>
+            
+            <div className="w-full max-w-5xl flex-1 mx-auto bg-slate-950/50 border border-cyan-500/40 p-1 md:p-2 shadow-[0_0_30px_rgba(6,182,212,0.15)] relative overflow-hidden min-h-0" style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%)' }}>
+                 <canvas ref={expandedMinimapRef} className="w-full h-full block bg-[#020617] border border-cyan-900/50" />
+                 
+                 {/* Decorative Corner Accents */}
+                 <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
+                 <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
+                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
+                 
+                 <div className="absolute bottom-6 right-6 text-[10px] font-mono text-cyan-500/80 pointer-events-none bg-black/50 px-2 py-1 backdrop-blur-sm z-10">
+                     LIVE FEED
+                 </div>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-[10px] font-mono text-slate-400 mt-4 max-w-5xl mx-auto w-full mb-8 md:mb-0 shrink-0">
+                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#f43f5e]"></div>HOSTILES</span>
+                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full border border-[#ec4899]"></div>VIPERS/BOSSES</span>
+                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#F59E0B]"></div>AMMUNITION</span>
+                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#10b981]"></div>HEALTH</span>
+                <span className="flex items-center gap-2"><div className="w-2 h-2 bg-[#ffffff] shadow-[0_0_8px_#22d3ee]"></div>PLAYER UNIT</span>
+            </div>
+        </div>
+      )}
       
       {/* Mobile Controls Overlay */}
       {isTouchDevice && (

@@ -128,7 +128,8 @@ export default function App() {
                     <motion.div 
                       initial={{ scale: 0.9, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      className="relative bg-slate-900 border border-slate-700/50 rounded-2xl md:rounded-3xl p-6 md:p-10 max-w-sm md:max-w-lg w-full max-h-[95vh] overflow-y-auto flex flex-col items-center justify-center shadow-[0_0_50px_rgba(30,27,75,0.8)] z-10"
+                      className="relative bg-slate-900/90 border border-cyan-900/50 p-8 md:p-12 max-w-sm md:max-w-xl w-full max-h-[95vh] overflow-y-auto flex flex-col items-center justify-center shadow-[0_0_50px_rgba(6,182,212,0.1)] z-10 backdrop-blur-md"
+                      style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%)' }}
                     >
                       <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent ${isVictory ? 'via-emerald-500' : 'via-rose-500'} to-transparent`}></div>
                       {isVictory ? (
@@ -137,30 +138,29 @@ export default function App() {
                         <ShieldAlert className="text-rose-500 mb-3 md:mb-6 w-12 h-12 md:w-16 md:h-16 drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]" />
                       )}
                       
-                      <h2 className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2 tracking-tight text-center">
+                      <h2 className="text-2xl md:text-4xl font-bold text-white mb-4 md:mb-6 tracking-tight text-center uppercase tracking-[0.2em] font-mono drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
                         {isVictory ? 'VICTORY ACHIEVED' : 'SHIP DESTROYED'}
                       </h2>
-                      <p className="text-xs md:text-base text-slate-400 mb-4 md:mb-8 max-w-md text-center">
-                        {isVictory ? 'You destroyed the HRRN Executor and saved the galaxy!' : 'Your fighter was overwhelmed by the Kla\'ed armada.'}
-                      </p>
                       
-                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl md:rounded-2xl p-4 md:p-6 mb-4 md:mb-8 w-full text-center shadow-inner">
+                      <div className="bg-slate-950/50 border border-slate-800/80 p-4 md:p-6 mb-6 md:mb-8 w-full text-center shadow-inner" style={{ clipPath: 'polygon(5% 0, 95% 0, 100% 100%, 0 100%)' }}>
                         <div className="text-xs md:text-sm font-semibold text-slate-500 uppercase tracking-widest mb-1">Final Score</div>
                         <div className="text-3xl md:text-5xl font-mono font-bold text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.5)]">{finalScore}</div>
                       </div>
 
-                      <div className="flex flex-row gap-3 md:gap-4 w-full">
+                      <div className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full">
                         <button 
                           onClick={restart}
-                          className="flex-1 flex items-center justify-center gap-2 md:gap-3 bg-indigo-600/90 hover:bg-indigo-500 text-white px-3 md:px-6 py-3 md:py-4 rounded-xl font-bold text-sm md:text-base shadow-lg shadow-indigo-900/20 transition-all focus:ring-4 focus:ring-indigo-500/20 active:scale-95 border border-indigo-500/30 hover:border-indigo-400/50"
+                          className="flex-1 flex items-center justify-center gap-2 md:gap-3 border border-cyan-500/50 bg-cyan-950/30 hover:bg-cyan-900/50 text-cyan-400 px-3 md:px-6 py-3 md:py-4 font-bold text-xs md:text-sm tracking-widest uppercase shadow-[0_0_15px_rgba(6,182,212,0.1)] hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all focus:outline-none active:scale-95"
+                          style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}
                         >
-                          <RefreshCw className="w-4 h-4 md:w-5 md:h-5" /> Launch Again
+                          <RefreshCw className="w-4 h-4" /> Deploy Again
                         </button>
                         <button 
                           onClick={backToMenu}
-                          className="flex-[0.8] flex items-center justify-center gap-2 md:gap-3 bg-slate-800/80 hover:bg-slate-700 text-white px-3 md:px-6 py-3 md:py-4 rounded-xl font-bold text-sm md:text-base shadow-lg transition-all focus:ring-4 focus:ring-slate-500/20 active:scale-95 border border-slate-700 hover:border-slate-600"
+                          className="flex-[0.8] flex items-center justify-center gap-2 md:gap-3 border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 px-3 md:px-6 py-3 md:py-4 font-bold text-xs md:text-sm shadow-md transition-all focus:outline-none active:scale-95 tracking-widest uppercase hover:text-white"
+                          style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}
                         >
-                          <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" /> Main Menu
+                          <ArrowLeft className="w-4 h-4" /> Abort
                         </button>
                       </div>
                     </motion.div>
