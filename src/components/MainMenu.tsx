@@ -53,7 +53,7 @@ const MenuButton = ({
   );
 };
 
-export function MainMenu({ onStartGame, onShowReport, onShowModes, onShowShop }: { onStartGame: () => void, onShowReport: () => void, onShowModes?: () => void, onShowShop?: () => void }) {
+export function MainMenu({ onStartGame, onShowReport, onShowModes, onShowShop, onShowCodex }: { onStartGame: () => void, onShowReport: () => void, onShowModes?: () => void, onShowShop?: () => void, onShowCodex?: () => void }) {
   const [uiScale, setUiScale] = React.useState(1);
 
   React.useEffect(() => {
@@ -128,6 +128,11 @@ export function MainMenu({ onStartGame, onShowReport, onShowModes, onShowShop }:
           <MenuButton 
             onClick={onShowModes}
             title="Galaxy Map"
+          />
+
+          <MenuButton 
+            onClick={onShowCodex}
+            title="Data Codex"
           />
 
           <MenuButton 

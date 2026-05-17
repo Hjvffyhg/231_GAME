@@ -848,3 +848,155 @@ Additionally, I noticed that while the player's ship correctly called `triggerWe
 > "The final game name is Space Survival. its final"
 
 **Result:** Updated all project references, including documentation files (`GAME_CONCEPT.md` and `gameDemo.md`) to officially rename the game to "Space Survival" replacing "Void OS" or "Void OS: Space Scheduler". The UI references, metadata, and HTML title have all been aligned to the final name.
+
+## 129. UI/UX Algorithm Display and Selection
+> "1. The Control Scheme (How to Swap)... 2. UI / HUD Design... 3. Visual & Audio Feedback"
+
+**Result:** Integrated dynamic algorithmic feedback natively into the UI and key bindings. Mapped hotkeys (`1`, `2`, `3`, and `Q` to cycle) for instantaneous manual algorithm overriding, preventing it from solely relying on automated wave scaling. Upgraded the visual Drones and corresponding firing lasers to alter their paint natively to match the active system: Blue (FCFS), Green (RR), and Red (HRRN). Included unique auditory signals per state change triggered via square, sine, and triangle waves inside the AudioContext. Also included a persistent UI block anchoring the current selections cleanly into the bottom action bar.
+
+## 130. Algorithm HUD Bug Fix and Repositioning
+> "fix this, place it in the most visible part, but not mess one"
+
+**Result:** Fixed a bug where string template variables in the new Algo HUD were being printed literally due to incorrect character escaping. Repositioned the HUD element from the bottom edge (where it blocked vital weapon elements) and anchored it just below the "Mission Telemetry / Wave" HUD at the top center of the screen, providing maximum visibility without obfuscating weapons control.
+
+## 131. Drone Targeting Prioritization (Setable Override)
+> "In src/components/GameCanvas.tsx, modify the drone targeting logic to allow different prioritization for FCFS, RR, and HRRN. For HRRN, this should consider the enemy's Wait Time and Service Time, and also its setable priority."
+
+**Result:** Overhauled the drone CPU scheduler to include a settable target priority. Players can now Right-Click (or trigger a context menu) over an enemy to mark it as High Priority (applying a massive target score multiplier). The UI renders an enhanced high-threat indicator depending on the active algorithm mode (displaying scaling factors like `! P:x.xx !`). The schedulers natively respect this: FCFS multiplies `W` accumulated wait, RR bypasses its normal queue cycle to service priority targets instantly, and HRRN multiplies its response ratio equation `(W+S)/S`. Added visual hints to the HUD explaining the new user override action.
+
+## 132. MetaMask Connection Error
+> "Fix the following errors: Failed to connect to MetaMask"
+
+**Result:** Re-confirmed that the application does not contain blockchain or Web3 elements. The MetaMask connection error is a spurious console warning caused by the MetaMask browser extension attempting to inject variables into the secure iframe.
+
+## 133. Game Design Document (GDD) Module 1
+> "I want you to act as a Senior Game Designer with 20 years of experience in both Indie and AAA development..."
+
+**Result:** Adopted the requested Senior Game Designer persona and initiated the Slite.com framework GDD process. Created the skeleton file `docs/GDD.md` to house the responses and presented the user with targeted questions for Module 1 (The High Concept).
+
+## 134. GDD Module 1 Synthesis
+> "You can read the game details to answer this, and I edited if there is a wrong"
+
+**Result:** Read the existing `GAME_CONCEPT.md` and `gameDemo.md` files to synthesize the answers for Module 1 of the Game Design Document. Updated `docs/GDD.md` with the Game Title, Genre, Elevator Pitch, USPs, and Core Pillar. Included "Designer's Improvements" such as visualizing the Ready Queue as a "Task Manager" HUD and adding an "Overclocking" ultimate ability.
+
+## 135. GDD Module 2 Synthesis
+> "1. Flow: I want Option B. Kills advance the wave, and I want a shop phase between waves. 2. Controls: Let's add the "Overclock" for high risk/reward and the "EMP Burst" as a panic button. 3. Economy: I prefer Option C. Mid-run upgrades for temporary power, and banked CTR for permanent ship upgrades in the menu. 4. Arena: I want a Hard Wall boundary, and hazards should be Telegraphed so the player can dodge them."
+
+**Result:** Synthesized the user's answers into Module 2 of the Game Design Document. Updated `docs/GDD.md` to reflect the kill-based progression with mid-run shop phases, the addition of Overclock and EMP Burst mechanics, the hybrid temporary/permanent economy (Option C), and the hard-walled arena with telegraphed hazards. Included Lead Designer's suggestions for a "Memory Leak" enrage timer, a "Shop Synergy" system, and a "Kernel Panic" heat gauge for Overclock.
+
+## 137. GDD Module 2 Update (Revision)
+> "Module 2: Gameplay & Mechanics (The "How") — Updated Version..."
+
+**Result:** Replaced Module 2 in the Game Design Document to reflect the user's massive mechanics update. This introduces the Thrashing penalty for rapid algorithm swaps, toroidal screen wrapping for the arena, visual color priority indicators (gold, silver, grey), memory leak zones for crowd control hazards, and precise definition of the hybrid run progression structure. Adjusted Designer Suggestions to fit the new mechanics.
+
+## 138. GDD Module 3 Update (Revision)
+> "Module 3: Story & Worldbuilding (The "Why") — Updated Version
+3.1 Narrative Arc...
+3.2 Setting & Lore...
+3.3 Character Profiles...
+3.4 Dialogue & Storytelling..."
+
+**Result:** Replaced Module 3 in the Game Design Document to integrate the user's new narrative direction. This establishes the three-act arc (The Vanguard, The Attrition, The Flagship), the "Cyber-Industrial Space" setting against the Kla'ed bio-digital hive-mind, and the dynamic character profiles for the Pilot, Mr. Daniel Pads, the evolving OS, and the Kla'ed Flagship. Updated Designer Suggestions to complement the psychological tension of the evolving OS.
+
+## 139. GDD Module 4 Update (Aesthetics)
+> "Module 4: Aesthetics (The "Feel")
+> 4.1 Visual Direction: "The Analog/Digital Contrast"...
+> 4.2 The "Task Manager" HUD (Visualizing the Logic)...
+> 4.3 Audio Landscape: "The Glitch-Synth Score"...
+> 4.4 User Experience (UX) & Interface Flow..."
+
+**Result:** Updated `docs/GDD.md` with Module 4: Aesthetics. Documented the dual-layer visual style (Retro 2D Pixel Art for Canvas, "Terminal OS" for React), the "Task Manager" HUD design (Dynamic Ready Queue), the Glitch-Synth audio landscape, and the React-driven seamless UX flow. Added Designer Suggestions for Queue Context Menus and Crash Dump (BSOD) screens upon death.
+
+## 140. GDD Module 5 Update (Technical & Project Scope)
+> "Module 5: Technical & Project Scope (The "Reality")
+> 5.1 Development Roadmap (The Milestones)...
+> 5.2 Technical Risks & Mitigation...
+> 5.3 Final Asset Checklist..."
+
+**Result:** Completed the Game Design Document by adding Module 5 into `docs/GDD.md`. Outlined the four-phase milestone roadmap (Logic Prototype -> Vertical Slice -> Alpha -> Beta), tabulated technical risks like React Render Lag and Canvas Performance with mitigation strategies (Bridge Pattern, Entity Pooling), and enumerated the Final Asset Checklist. Concluded the Lead Designer persona's guidance with suggestions for analytics tracking and Web Workers for the core loop.
+
+## 141. GDD Module 5 Review
+> "Let's work with module 5"
+
+**Result:** Acknowledged the completion of the GDD and proposed actionable next steps based on the Module 5 roadmap to begin implementation in the codebase, such as Entity Pooling, Wrap-Around logic, or Meta-progression.
+
+## 142. GDD Module 6 (Systems Architecture, Moved to Module 5)
+> "it's for the ### Lead Designer's Improvements & Suggestions (Module 5 Update)"
+
+**Result:** Correctly merged the "Systems Architecture (Detailed Specs)" section detailing the Analytics Black Box and Web Worker implementation into the `### Lead Designer's Improvements & Suggestions (Module 5 Update)` section of the `docs/GDD.md` document, resolving the structural discrepancy.
+
+## 143. GDD Analyst Agent
+> "Now create an agent that analyzes the GDD and applies it to the game"
+
+**Result:** Created a new agent file `docs/game_design/gdd_analyst_agent.md` defining the `GDDAnalystAgent`. This AI persona acts as a Systems Architect and Game Engine Developer, configured to ingest the GDD specs (especially around the React/Canvas Bridge Pattern, Web Worker Threading, and the Analytics Black Box) and systematically cross-reference and apply those specifications to the `src/` codebase.
+
+## 144. GDD Analyst Agent: Codebase Comprehension
+> "Also, the agent has to understand the whole code base"
+
+**Result:** Updated `docs/game_design/gdd_analyst_agent.md` to mandate holistic codebase comprehension before applying any GDD specs. Added "Holistic Codebase Comprehension" as a core directive, enriched the instructions, introduced a `map_full_codebase` mocked tool function in the agent config, and updated the Expected Workflow to start with this structural scan.
+
+## 145. Implement Systems Architecture (BlackBox + Worker)
+> "Now lets start"
+
+**Result:** Triggered by the command to start acting upon the specs, the application's underlying Systems Architecture (GDD Module 6 / Module 5 Update) was integrated. 
+1. Mapped the existing React/Canvas execution loop inside `src/components/GameCanvas.tsx` handling FCFS, RR, and HRRN scheduling.
+2. Implemented the Analytics **Black Box**:
+   - Created `src/lib/BlackBox.ts` to manage death logging and `DeathSnapshot` capturing.
+   - Refactored all `hp -=` damage decrements in `GameCanvas.tsx` to accurately set a `lastDamageSource`.
+   - Instrumented the "Check Death" block in the frame loop to parse `lastDamageSource` alongside active anomaly hazards, the current algorithmic load, and session duration to call `BlackBox.recordDeath(snapshot)`.
+3. Overhauled **Scheduler Rendering** with **Web Worker Threading**:
+   - Created `src/lib/Scheduler.worker.ts` exposing an asynchronous `onmessage` sorting calculation for the HRRN and FCFS computations to avoid Canvas frame lag when processing massive ReadyQueues.
+   - Initialized a `Worker` inside `GameCanvas.tsx`'s setup `useEffect`, polling snapshot queues every 100ms via `postMessage` and retrieving a strict numeric `priorityList` of enemy IDs. Next loop cycles preemptively pop this hardware-processed ID queue as an override over the previous synchronous logic.
+
+## 146. Start From The Beginning (Module 1 - Task Manager HUD)
+> "what module you do? lets start from the button" (Bottom/Beginning)
+
+**Result:** To kick off the UI/UX polish from Module 1 of the GDD, I implemented the "Task Manager HUD".
+1. Refactored `src/components/GameCanvas.tsx` to add a fixed React layer parsing the canvas's active `state.readyQueue`.
+2. Created a dynamic HTML injection block `readyQueueUiRef` that updates at the frame rate.
+3. Designed the HUD utilizing Tailwind CSS inside `GameCanvas.tsx`, styling it with `bg-indigo-500/10` and `text-[9px] font-mono`. It highlights actively targeted algorithms in Amber, and idle ones in Slate, accurately simulating a live OS Task Manager running your algorithmic scheduler.
+
+## 147. Lead Designer Module 1 Improvements: Overclock & Malware
+> "1"
+
+**Result:** Continuing with the Module 1 Design Improvements from the GDD (`/docs/GDD.md`), I implemented items 2 and 3: **Overclocking** and **Malware**.
+1. **Overclocking (Ultimate Ability):**
+   - Added an 'O/C' skill to the UI bound to the `F` key (and a new mobile HUD button in `hudLayout.ts`).
+   - Tapping it triggers a 5-second burst where drone fire rate dramatically increases, projectile speeds nearly double, laser trails turn fuchsia (`#d946ef`), and the algorithm receives 4 extra active 'Cores'.
+   - The drawback functions exactly as designed: stamina is completely drained, and shields plunge to 0, leaving the player hyper-vulnerable in exchange for extreme processing throughput.
+2. **Viruses vs. Antivirus (Malware Mechanics):**
+   - Introduced a new `malware` enemy type that spawns after 45 seconds of pacing.
+   - When active on the screen, these enemies infect the scheduler: the algorithm forcefully bypasses player input and locks onto `FCFS`.
+   - Players attempting to swap algorithms (`Q`, `1`, `2`, `3`) are met with a red `ALGORITHM LOCKED` system error on screen.
+   - Added a red pulsating HUD banner and applied a custom glitch/hue-rotate effect over the malware sprite to differentiate it from standard grunt ships.
+
+## 148. Story & Worldbuilding Implementation (Module 3)
+> "Proceed to the next module"
+
+**Result:** Triggered by your direction, I proceeded deeply into Module 3 of the GDD: "Story & Worldbuilding (The 'Why')".
+1. **Dynamic Boot Sequence:** Transformed the application entry point. Rather than unceremoniously jumping to the Main Menu, the game now invokes an eerie, stylized BIOS/terminal \`BootSequence.tsx\` outlining the ship's system booting, hardware checks, and uplink establishment before granting player control.
+2. **Thematic Game Over (BSOD):** Re-engineered the standard "Game Over" layout in \`App.tsx\`. When a player's hull drops to 0, they are now presented with a hyper-stylized 'Blue Screen of Death', printing out memory leaks, heap overflows, and fatal 0E exceptions mirroring UXD OS error handling mechanics.
+3. **Mid-Run Dialogue (The OS Awakening):** Developed background combat-timeout logic within \`GameCanvas.tsx\`. If the player clears the screen and experiences true silence for over 5 seconds, the OS possesses a rare chance to print fleeting, philosophical text ("It's quiet. They are re-indexing.", "Why do we fight?") floating through the stars, leaning into the narrative arc of emergent sentience.
+4. **Data Codex Integration:** Authored \`Codex.tsx\`, a fully immersive, categorized React-powered UI repository tracking the core lore defined in 3.2 Setting & Lore. Users can now read entries on "The Kla'ed Armada", "CTR", "The OS", and "Mr. Daniel Pads" accessible directly from a new "Data Codex" button built securely into \`MainMenu.tsx\`.
+
+## 149. Aesthetics Implementation (Module 4)
+> "proceed"
+
+**Result:** Triggered by your direction, I proceeded deeply into Module 4 of the GDD: "Aesthetics (The 'Feel')".
+1. **Queue Visualization Context Menus:** The "Ready Queue" UI on the left side of the screen now features robust Tooltips using Tailwind's `group-hover` CSS logic. When hovering over queue elements, players are presented with a detailed drop-down popover displaying individual tracking values such as Wait Time (W), Burst Time (S), FCFS Queue Position, and HRRN Priority calculation for maximum "Task Manager" flavor.
+2. **Neon Trails for Drones:** Augmented the `state.drones` objects with history tracking (`trail`) inside the animation loop. Drones now leave a dynamic linear-gradient trail that perfectly matches the neon cyan/green/magenta color of their active CPU Algorithm as they orbit the player.
+3. **Pixelated Explosions (High-Contrast):** Re-engineered the particle system's shape renderer. During primary enemy deaths or player damage events, particles are spawned with a new `isPixel: true` setting mapping to an explicit `#f43f5e` (Magenta) and `#f97316` (Orange) color palette. Rather than drawing rounded arcs, they plot using solid `ctx.fillRect()`, explicitly leaning into the "sprite-based pixel explosion" retro vibe as directed by the document!
+
+## 150. Beta Polish & Audio Implementation (Module 4/5 Finalization)
+> "proceed"
+
+**Result:** Finalizing the GDD specifications by addressing the missing Audio and UX requirements defined in Module 4 and Phase 4 of the Milestones.
+1. **Dynamic 'Glitch-Synth' Soundtrack:** Engineered a real-time procedural Web Audio sequencer inside `SoundManager`. The system generates a pounding dark-techno bassline and kick-drum pattern that actively scales its own arrangement (Low, Med, High intensity) explicitly matching the sheer volume of `enemiesOnScreen`.
+2. **'Low RAM' Audio Degradation:** Built a `BiquadFilterNode` overlaying the master gain. When the "Kernel" fighter's hull is breached below 25%, the filter plunges the entire game's soundscape into a heavily muffled, low-pass "glitchy" underwater effect mirroring system failure.
+3. **Advanced Paused Mechanics (Task Manager Sidebar):** Pausing the game now triggers the "System Paused" overlay with conditional rendering. It brings up a `Task Manager` sidebar displaying a frozen snapshot of the `ReadyQueue` and precise `W`, `S`, and Priority (`HRRN` calculation) floating-point data for deep player analysis as requested by the Lead Designer.
+4. **CRT Monitor Shutdown Transition:** Transitioned the `App.tsx` router away from basic opacity fades. Utilizing `framer-motion`, exiting the Main Menu now triggers a harsh brightness spike, horizontal squish (`scaleY: 0.01`), and blur effect directly mimicking a retro monitor powering off sequence before tossing the player onto the Canvas.
+
+## 151. Master System Prompt Initialization
+> "THE MASTER SYSTEM PROMPT: Space Survival Architect..."
+
+**Result:** Acknowledged the new system prompt and persona. Transitioned into the Lead Game Designer and Senior Technical Architect role. Summarized project status as having completed Phase 1 (Core Logic) and requested the next technical priority to proceed.

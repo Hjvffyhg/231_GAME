@@ -1,4 +1,4 @@
-export type HudElementId = 'moveJoystick' | 'aimJoystick' | 'wpnBtn' | 'shdBtn' | 'dshBtn' | 'hpBar';
+export type HudElementId = 'moveJoystick' | 'aimJoystick' | 'wpnBtn' | 'shdBtn' | 'dshBtn' | 'hpBar' | 'ocBtn';
 
 export interface HudElementState {
   x: number; // percentage (0-100)
@@ -16,6 +16,7 @@ export const DEFAULT_LAYOUT: HudLayout = {
   shdBtn: { x: 65, y: 68, scale: 1, opacity: 0.9 },
   dshBtn: { x: 60, y: 88, scale: 1, opacity: 0.9 },
   hpBar: { x: 50, y: 92, scale: 1, opacity: 1 },
+  ocBtn: { x: 55, y: 55, scale: 1, opacity: 0.9 },
 };
 
 export function getSavedLayout(): HudLayout {
