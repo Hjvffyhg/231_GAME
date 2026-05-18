@@ -996,7 +996,155 @@ Additionally, I noticed that while the player's ship correctly called `triggerWe
 3. **Advanced Paused Mechanics (Task Manager Sidebar):** Pausing the game now triggers the "System Paused" overlay with conditional rendering. It brings up a `Task Manager` sidebar displaying a frozen snapshot of the `ReadyQueue` and precise `W`, `S`, and Priority (`HRRN` calculation) floating-point data for deep player analysis as requested by the Lead Designer.
 4. **CRT Monitor Shutdown Transition:** Transitioned the `App.tsx` router away from basic opacity fades. Utilizing `framer-motion`, exiting the Main Menu now triggers a harsh brightness spike, horizontal squish (`scaleY: 0.01`), and blur effect directly mimicking a retro monitor powering off sequence before tossing the player onto the Canvas.
 
-## 151. Master System Prompt Initialization
-> "THE MASTER SYSTEM PROMPT: Space Survival Architect..."
+## 152. Renaming OS/System Terminology to Tactical Terms
+> "I want this game to turn out like a game The one thing I don't like is the term we're using(like it's too OS base), what I want is to replace it with a more natural approach. But the CPU algorithm is there not to shoe, but to recognize The issue is that the game is too technical, like there allot of words that you probably can't understand for the normal player. Our goal is to turn this game into an interactive game."
 
-**Result:** Acknowledged the new system prompt and persona. Transitioned into the Lead Game Designer and Senior Technical Architect role. Summarized project status as having completed Phase 1 (Core Logic) and requested the next technical priority to proceed.
+**Result:** Reworked the visible terminology across the HUD and Codex to feel less like a literal OS tutorial and more like an immersive sci-fi Tactical system. The underlying OS mechanics remain, but are named logically for combat:
+1. `FCFS` -> `TARGET LOCK` / `LOCK`
+2. `RR` -> `SUPPRESSION` / `SWEEP`
+3. `HRRN` -> `SMART SNIPE` / `SNIPE`
+4. `Task Manager` -> `TARGETING SYSTEM` / `ACTIVE TARGETS`
+5. `Ready Queue` -> `THREAT QUEUE`
+6. `Processes` -> `HOSTILES` / `THREATS`
+7. Various tweaks across tooltips (Wait Time -> Track Time, Service Size -> Threat Mass) and Codex lore files.
+8. Replaced boot sequence Kernel text with "Tactical Frame".
+9. Updated the Death screen to frame the player's death as a "HULL BREACH" and "Tactical Frame destroyed" instead of "Thread Terminated".
+
+## 153. Translating Technical Algorithm Lore into World / Emotion Mechanics
+> "Right now, it sounds like the project is exposing its internal systems too much... The CPU algorithm is there not to show, but to recognize."
+
+**Result:**
+Translated all remaining technical CPU scheduling jargon into emotional, mystery-dripped world language while hiding the raw math.
+1. Replaced literal scheduler jargon in the HUD mapping FCFS, RR, and HRRN to emotional equivalents ("FIXATED", "RESTLESS", "STUDYING").
+2. Replaced "TARGETING LOCKED" and "SYS OVERRIDE" with things like "IT IS FIXATED ON YOU", "THE SWARM IS CONFUSED", and "IT IS STUDYING YOU". 
+3. Replaced "THREAT QUEUE" and "HOSTILES" UI descriptors with "DETECTED SIGNALS", "ACTIVE PRESENCES", and "Swarm Observation".
+4. Changed "T: 0.0s" to "OBS: 0.0s" (Observed Time) and "Threat:" to "Hostility:".
+5. Re-framed the `Report.tsx` screen entirely as a "Swarm Observation" telemetry document detailing the intelligence of the alien hive-mind (Focusing on Fixation, Restlessness, and Vindictive memory), completely erasing references to real-world CPU design paradigms.
+6. Rewrote `Codex.tsx` to scrub words like "processing power", "CPU Warfare Systems", "computational resources" in favor of "consciousness", "vessel machinery", "awareness", and "Cosmic Hive-Mind". 
+7. Updated "root process termination" and "thread terminated" to "central hive purged" and "HULL BREACH: Tactical Frame destroyed".
+8. In-game wave notifications dynamically reflect the swarm's mood ("RESTLESS STATE OBSERVED" instead of "ROUND ROBIN ACTIVATED").
+9. Changed Pause menu and Shop UI to use standard in-universe weapon terminology instead of OS-process terms.
+
+## 154. User specific request - UI Adjustments
+> "delete this one and adjust the buttons"
+
+**Result:** Removed the paragraph below the title ('Intercept the...'), changed the button container layout to not use `justify-end flex-1` so it flows naturally, and increased the button widths (`w-[260px] min-h-[55px] sm:w-[360px] lg:w-[420px]`) so the text doesn't wrap awkwardly.
+
+## 155. User specific request - Change button labels
+> "Change the label of the buttons on the main menu.
+> START MISSION (Instead of Deploy Tactical Frame)
+> UPGRADES (Instead of Hangar Bay)
+> LEVEL SELECT (Instead of Galaxy Map)
+> STORY / LORE (Instead of Data Archives)
+> ENEMY INFO (Instead of Swarm Intelligence Report)"
+
+**Result:** Changed the buttons on the Main Menu to match the requested labels.
+
+## 156. User specific request - Center ALGO panel
+> "centered it and fix the its panel"
+
+**Result:** Fixed the ALGO HUD Panel (FIXATED/RESTLESS/VINDICTIVE) layout. The text within the panel no longer causes uneven horizontal shifting due to label length differences because we added fixed width `w-28` to each text block. We also replaced the asymmetric `clipPath` with a properly styled, visible, and rounded background modal to look aligned and centered relative to the screen and the Hull Breach modals.
+
+## 157. User specific request - Change Mission Failed dialog
+> "change this dialog into:
+> Title: MISSION FAILED
+> Sub-text: Your ship was destroyed in Sector-7G.
+> Bullet Points:
+> Overwhelmed by enemy swarms.
+> Shields failed.
+> Tip: Upgrade your armor in the Hangar before trying again.
+> Red Button: TRY AGAIN
+> Black Button: MAIN MENU"
+
+**Result:** Updated `App.tsx`'s Game Over screen when `isVictory` is false. Modified the title, sub-text, bullet points to match the request exactly, and updated the button labels.
+
+## 158. User specific request - UI Terminology Update
+> "Change the gameplay UI into:
+> 1. Top Left: Status Bars
+> Instead of technical component names, use the "Universal" gaming terms...
+> 2. Bottom Center: Weaponry & Abilities
+> Abbreviations like "KIN" and "PLS" take a second for the brain to process...
+> 3. Middle: Drone Modes (The personality traits)
+> "Fixated," "Restless," and "Vindictive" are cool for lore...
+> 4. Right Side: Combat Info
+> PRESENCES: 4 -> ENEMIES: 4..."
+
+**Result:** Updated `GameCanvas.tsx` to replace technical or obscure terms with standard gaming terminology. `HULL INTEGRITY` -> `ARMOR`, `DEF_SHIELD` -> `SHIELDS`, `CORE ENERGY` -> `POWER`. Renamed weaponry labels to `KINETIC`, `PLASMA`, `AMMO`, `SHIELD`, and `OVERDRIVE`. Transformed drone traits from `FIXATED`, `RESTLESS`, `VINDICTIVE` to `FOCUS`, `PATROL`, `ATTACK`. Renamed combat info panel headings to use `ENEMIES`, `DRONE MODE`, and `TARGET LIST`.
+
+## 159. User specific request - Stylize Game Over Dialog
+> "fix this, it's kinda boring aligh it the main menu"
+
+**Result:** Updated `App.tsx`'s Game Over screen (Mission Failed and Victory) to align with the main menu's glassmorphism UI. We adjusted the background of the modal, updated the borders to have glowing left edges, overlaid a scanline effect, and updated the "TRY AGAIN" and "MAIN MENU" buttons to use the geometric `clip-path` and gradient-hover effects seen on the `MainMenu.tsx` screen.
+
+## 160. User specific request - Center Game Over Screen
+> "To center your design, you should align every element to the vertical middle of the box. Centering a "Game Over" screen usually feels more balanced and important to the player... [Instructions to center using 'Block Method' for lists]"
+
+**Result:** Updated `App.tsx`'s Game Over UI container. Set the container wrapper to `flex flex-col items-center text-center`, updated the bullet list to be contained within an `inline-block text-left` wrapper (the recommended "Block" Method), set the score panel to use `items-center justify-center` and updated the buttons container wrapper to use `justify-center`.
+
+## 161. User specific request - Remove stray game boundary line
+> "delete this line, there are two line"
+
+**Result:** Removed the inner `Game Boundary` stroke rectangle from `GameCanvas.tsx`'s drawing loop, which was rendering visually confusing solid grey lines over gameplay elements near the map edges.
+
+## 162. User specific request - Remove queue visualization line
+> "The red line, that line remove or hide it for better battlefield"
+
+**Result:** Removed the dynamic "Queue Sorting Visualization" dashed line that linked targets in the ready queue (which appeared dynamically as a curved red line in "ATTACK" mode), allowing for a less cluttered visual experience in combat.
+
+## 163. User specific request - Drone Laser Protection & Targeting Context
+> "Make the drone/laser protect the player/ship. As a default its FCFS. Protect the player based on the characteristics of the algorithm. Example is FCFS, it attaches to the first who arrives to the ranged of it... same as others, but with different characteristics(depends on the algorithm set by player)"
+
+**Result:** Changed drone firing logic from pushing discrete delayed physical bullet entities to firing a continuous visual laser beam that attaches directly from the drone to the prioritized enemy target, causing steady continuous damage per second along with particle effects. Adjusted the global wait-time (`W`) calculation variable logic so that it solely accumulates only whilst enemies are within the Drone's active sensor range. This ensures that FCFS algorithm selection targets strictly "the first entity to arrive into range", instead of targeting the oldest entity spawned globally, creating true proximity-based protection for the player according to the algorithms chosen.
+
+## 164. User specific request - Camera Offset implementation
+> "Instead of locking the camera perfectly on the ship, let the camera shift slightly toward your mouse cursor or the direction you are looking."
+
+**Result:** Implemented the "Camera Offset" centering method in `GameCanvas.tsx`. The viewport now shifts dynamically based on relative mouse cursor distance from the center of the screen, allowing players to look and lead further ahead while preventing the camera from rigidly snapping 1-to-1 to the ship position.
+
+## 165. User specific request - Settings for components
+> "and a setting on the gameplay IU for the adjustment of all components and others stuff"
+
+**Result:** Added a new "SYSTEM SETTINGS" modal accessible via the Tactical Pause menu. This modal provides global adjustments for gameplay components including Drone Engagement Range, Master Audio Output, Background Music Isolation, and integrated access to the HUD Diagnostics & Component Editor to fully configure UI modules.
+
+## 166. User specific request - Drone Laser Interception
+> "Also, the laser can dodge the enemy bullet by targeting it"
+
+**Result:** Integrated Enemy Projectiles smoothly into the core Scheduling Data Queue (`readyQueue`). The drone logic now natively views bullets as transient entities with extreme priority (`priority: 2`) and minimal compute mass (`S: 0.1`, 1 HP). Consequently, through FCFS, RR, and HRRN processing paradigms, the drones seamlessly act as powerful "Point-Defense" mechanism units that actively zip between targets to zap and intercept incoming enemy projectiles out of the air—yielding a "CRITICAL INTERCEPT!" pop-up to show successful evasion/defensive coverage.
+
+## 167. User specific request - Camera Options and Logic
+> "and a setting on the gameplay IU for the adjustment of all components and others stuff... Add the camera to settings like sensitive, zoom, and others and an option to keep the player at the center of the camera: Keep the player centered. Add a tiny "Lean": When the player moves or aims, have the camera move about 10-15% in that direction. Zoom Out slightly during high speeds: If they use the Dash or a speed boost, pull the camera back a little so they can see the path ahead."
+
+**Result:** Implemented a new internal settings menu inside the `GameCanvas` called "System Settings", accessible from the pause menu. Under the new "Camera Optics" tab, players can toggle between three camera modes:
+1. `OFFSET`: The traditional offset camera matching previous behaviors.
+2. `CENTER`: Locks the camera strictly on the player without deviation.
+3. `DYNAMIC`: A sophisticated mode that incorporates a small 10% "Lean" vector favoring user movement and cursor position, paired with an integrated `targetZoom = 0.85;` that smoothly scales back the field-of-view when the ship performs a high-speed dash (velocity > 250), providing superior tactical visibility ahead of the vessel's trajectory.
+
+## 168. Apply the edits shown in the screenshot & adjust labels
+> "edit this/fix. delete the plus sign adjust the labels cuz its not visivisible"
+
+**Result:** Removed the `(+)` quick-access configuration button from the bottom desktop HUD layout as requested. Expanded the width of the weapon and skill components (KINETIC, PLASMA, DASH, SHIELD, OVERDRIVE) to prevent the text from being cut off. Updated the text sizing and `clipPath` parameters (reduced corner clipping from 30% to 20%) to ensure all labels fully fit within the octagonal bounding boxes and remain perfectly readable.
+
+## 169. Fill Final Presentation Plan
+> "8. Final Presentation Plan\nFill this\nOutline details about the game"
+
+**Result:** Expanded the final section of `PROGRESS_REPORT_3_UI_UX.md` to include a highly detailed presentation outline. It breaks down what to discuss in the introduction, core mechanics, the specific IT231 Operating Systems Integration (FCFS, RR, HRRN algorithms), UI/UX design philosophy, screen walkthroughs, live demonstration points, technical stack, and materials needed for the final presentation.
+
+## 170. Truly Endless & Double Length
+> "Is this game really endless? doubles that"
+
+**Result:** Made the game truly endless and doubled the challenge length. Changed the wave duration from 30 seconds to 60 seconds. Doubled the maximum enemy count hard cap on screen from 45 to 90. Updated boss spawn timers to account for the longer waves (55s, 115s, 175s). Furthermore, fixed the boss spawning logic to allow bosses to keep spawning randomly indefinitely once past the third wave milestone, removing the limit that prevented more than three bosses from spawning per run.
+
+## 171. Drone Laser Trail & Impact Enhancements
+> "In src/components/GameCanvas.tsx, improve the visual effect of the player's homing lasers fired by the drones. Add a slight bloom or glow to the laser trail using `shadowBlur` and ensure they have a distinct endpoint or impact effect on enemies with bright white flares."
+
+**Result:** Modified `GameCanvas.tsx` to noticeably enhance the drone laser trail visuals by applying extreme `shadowBlur` (up to 25px) combined with an inner `#ffffff` core layer that blooms brightly over the underlying algorithmic color path. Furthermore, collision interception rendering was enhanced: drone lasers that strike hostiles now detonate with a distinctly massive, star-shaped geometric `#FFFFFF` white energy flare that briefly blinds the impact zone alongside rapid high-velocity shrapnel.
+
+## 172. Auto-Pilot / Tester Enhancements
+> "Enhance the tester"
+
+**Result:** Improved the `state.autoPilot` logic in `GameCanvas.tsx`. The autonomous tester now features predictive aiming (leading the target based on target speed), dynamically chooses the PLASMA weapon for crowd control against 3 or more stacked enemies, intelligently uses OVERDRIVE when swarmed locally by 15+ enemies or a boss, lowers minimum optimal combat distance when Overdrive is active, and deploys the energy SHIELD preemptively against heavy bullet volleys or when critically surrounded.
+
+## 173. Auto-Pilot Camera Sync
+> "Apply the camera settings to the tester"
+
+**Result:** Updated the base camera panning logic in `GameCanvas.tsx` to automatically synthesize a virtual on-screen mouse coordinate based on the `autoPilot`'s targeted world coordinate in the previous frame. It prevents the physical cursor from continuously overriding the `state.mouse.x/y` target coordinates while autopilot is active, allowing full dynamic pan offsets and "Dynamic"/"Offset" zoom behaviors to function accurately around the autopilot's programmatic aim focus.

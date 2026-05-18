@@ -168,7 +168,7 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
                   }`}
                   style={{ clipPath: 'polygon(2% 0, 98% 0, 100% 50%, 98% 100%, 2% 100%, 0% 50%)' }}
                 >
-                  {isSelected ? 'System Engaged' : isUnlocked ? 'Initialize' : 'Authorize Build'}
+                  {isSelected ? 'Weapon Installed' : isUnlocked ? 'Equip Weapon' : 'Authorize Build'}
                 </button>
               </div>
             );
@@ -178,7 +178,7 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
         {/* UPGRADES PANEL */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2 border-b border-rose-900/50 pb-2 mt-6 lg:mt-0">
-            <span className="text-xs font-mono font-bold text-rose-500 tracking-widest uppercase">Sub-System Overrides</span>
+            <span className="text-xs font-mono font-bold text-rose-500 tracking-widest uppercase">Tactical Overrides</span>
           </div>
 
           {UPGRADES.map(upg => {
@@ -237,7 +237,7 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
                     }`}
                     style={{ clipPath: 'polygon(0 0, 95% 0, 100% 50%, 95% 100%, 0 100%)' }}
                   >
-                    <span>{isMax ? 'OPTIMIZATION COMPLETE' : 'Execute Upgrade'}</span>
+                    <span>{isMax ? 'MODIFICATION MAXED' : 'Authorize Refit'}</span>
                     {!isMax && <span className={canAfford ? 'text-amber-400' : 'text-rose-900'}>{cost.toLocaleString()} CTR</span>}
                   </button>
                 </div>

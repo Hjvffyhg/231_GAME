@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { soundManager } from '../lib/audio';
 
 const BOOT_SEQUENCE = [
-  { text: "INITIALIZING KERNEL...", delay: 200 },
-  { text: "MOUNTING /dev/sda1... OK", delay: 800 },
-  { text: "LOADING OS... Earth_Defense_Core_v1.0.4", delay: 1200 },
-  { text: "CHECKING MODULES... [CPU, MEM, NET]", delay: 1800 },
+  { text: "INITIALIZING FRAME...", delay: 200 },
+  { text: "MOUNTING TACTICAL SYS... OK", delay: 800 },
+  { text: "LOADING COMMAND_CORE... Earth_Defense_Core_v1.0.4", delay: 1200 },
+  { text: "CHECKING MODULES... [HULL, SHLD, ENG]", delay: 1800 },
   { text: "ESTABLISHING UPLINK TO COMMAND...", delay: 2500 },
   { text: "CONNECTION SECURED.", delay: 3200 },
   { text: "WELCOME, PILOT.", delay: 3500 },

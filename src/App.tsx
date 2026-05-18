@@ -147,66 +147,90 @@ export default function App() {
 
                 {isGameOver && (
                   <div className={cn(
-                    "absolute inset-0 z-50 flex items-center justify-center p-6 font-mono overflow-hidden",
-                    isVictory ? "bg-emerald-950/90 text-emerald-100" : "bg-blue-900/90 text-blue-100"
+                    "absolute inset-0 z-[200] flex items-center justify-center p-6 font-mono overflow-hidden backdrop-blur-sm",
+                    isVictory ? "bg-emerald-950/90 text-emerald-100" : "bg-slate-950/90 text-slate-100"
                   )}>
                     {isVictory && (
                       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.2)_0%,transparent_100%)] pointer-events-none"></div>
                     )}
                     <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="max-w-2xl w-full flex flex-col items-start justify-center overflow-y-auto z-10"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="max-w-2xl w-full flex flex-col items-start justify-center overflow-y-auto z-10 p-8 shadow-2xl relative group"
+                      style={{ clipPath: 'polygon(5% 0, 100% 0, 100% 95%, 95% 100%, 0 100%, 0 5%)' }}
                     >
-                      {isVictory ? (
-                        <>
-                          <div className="bg-emerald-500 text-black px-2 py-1 mb-4 text-xl font-bold uppercase shadow-[0_0_15px_rgba(16,185,129,0.5)]">SYSTEM OVERRIDE SUCCESSFUL</div>
-                          <p className="mb-2">The Kla'ed flagship root process has been terminated.</p>
-                          <p className="mb-6 opacity-80">Earth Defense Initiative command acknowledges your victory.</p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="bg-white text-blue-900 px-2 py-1 mb-4 text-xl font-bold uppercase shadow-[0_0_15px_rgba(255,255,255,0.5)]">FATAL EXCEPTION: THREAD TERMINATED</div>
-                          <p className="mb-2">A fatal exception 0E has occurred at <span className="text-white">0028:C0011E36</span> in UXD OS.</p>
-                          <p className="mb-4 text-rose-300">The current process will be terminated.</p>
-                          <ul className="list-disc pl-5 mb-6 space-y-1 text-sm text-blue-200">
-                            <li>Insufficient Cores detected in Sector 7G.</li>
-                            <li>Heap memory overflow caused by Kla'ed sub-routines.</li>
-                            <li>Recommend upgrading RAM at the nearest Hangar bay before next deployment.</li>
-                          </ul>
-                        </>
-                      )}
+                      {/* Glassmorphism Background for Modal */}
+                      <div className={cn("absolute inset-0 border backdrop-blur-sm transition-all", isVictory ? "bg-emerald-950/30 border-emerald-500/30" : "bg-rose-950/30 border-rose-500/30")}></div>
                       
-                      <div className={cn(
-                        "mb-8 w-full border p-4",
-                        isVictory ? "border-emerald-500/50 bg-emerald-900/30" : "border-blue-400/50 bg-blue-900/30"
-                      )}>
-                        <div className={cn(
-                          "text-sm uppercase tracking-widest mb-1",
-                          isVictory ? "text-emerald-300" : "text-blue-300"
-                        )}>Final Process Score</div>
-                        <div className="text-3xl font-bold text-white">{finalScore}</div>
-                      </div>
+                      {/* Glowing left edge indicator */}
+                      <div className={cn("absolute left-0 top-0 bottom-0 w-2 shadow-[0_0_15px]", isVictory ? "bg-emerald-400 shadow-emerald-400" : "bg-rose-400 shadow-rose-400")}></div>
 
-                      <div className="flex flex-col sm:flex-row gap-4 w-full">
-                        <button 
-                          onClick={restart}
-                          className={cn(
-                            "flex-1 flex items-center justify-center gap-2 px-4 py-3 font-bold text-sm tracking-widest uppercase transition-all shadow-md focus:outline-none active:scale-95",
-                            isVictory ? "bg-emerald-100 text-emerald-900 hover:bg-white" : "bg-blue-100 text-blue-900 hover:bg-white"
-                          )}
-                        >
-                          <RefreshCw className="w-4 h-4" /> Press to Reboot (Deploy Again)
-                        </button>
-                        <button 
-                          onClick={backToMenu}
-                          className={cn(
-                            "flex-1 flex items-center justify-center gap-2 border px-4 py-3 font-bold text-sm tracking-widest uppercase transition-all shadow-md focus:outline-none active:scale-95",
-                            isVictory ? "border-emerald-100 hover:bg-emerald-800 text-emerald-100" : "border-blue-100 hover:bg-blue-800 text-blue-100"
-                          )}
-                        >
-                          <ArrowLeft className="w-4 h-4" /> Shut Down (Abort)
-                        </button>
+                      {/* Scanline overlay effect */}
+                      <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30"></div>
+
+                      <div className="relative z-10 w-full flex flex-col items-center text-center">
+                        {isVictory ? (
+                          <>
+                            <div className="inline-block bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 px-4 py-2 mb-6 text-xl font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.3)]">HIVE NETWORK INFILTRATION SUCCESSFUL</div>
+                            <p className="mb-2 text-emerald-100 font-mono tracking-wide">The Kla'ed flagship central hive has been purged.</p>
+                            <p className="mb-8 opacity-70 font-mono text-sm">Earth Defense Initiative command acknowledges your victory.</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="inline-block bg-rose-500/20 border border-rose-500/50 text-rose-400 px-4 py-2 mb-6 text-xl font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(244,63,94,0.3)]">MISSION FAILED</div>
+                            <p className="mb-6 text-slate-300 font-mono tracking-wide">Your ship was destroyed in <span className="text-rose-400 font-bold">Sector-7G</span>.</p>
+                            <div className="inline-block text-left mb-8">
+                              <ul className="list-disc pl-5 space-y-2 text-sm text-slate-400 font-mono">
+                                <li>Overwhelmed by enemy swarms.</li>
+                                <li>Shields failed.</li>
+                                <li><span className="text-rose-400 font-bold uppercase tracking-wider text-xs">Tip:</span> Upgrade your armor in the Hangar before trying again.</li>
+                              </ul>
+                            </div>
+                          </>
+                        )}
+                        
+                        <div className={cn(
+                          "mb-10 w-full p-6 relative border overflow-hidden flex flex-col items-center",
+                          isVictory ? "border-emerald-500/40 bg-emerald-950/50" : "border-rose-900/50 bg-rose-950/20"
+                        )}>
+                          <div className={cn(
+                            "text-sm uppercase tracking-[0.3em] mb-2 font-mono drop-shadow-md text-center",
+                            isVictory ? "text-emerald-400" : "text-rose-400/80"
+                          )}>Final Combat Score</div>
+                          <div className={cn("text-5xl font-black tracking-wider drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] text-center", isVictory ? "text-emerald-100" : "text-white")}>{finalScore}</div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-center gap-6 w-full">
+                          <button 
+                            onClick={restart}
+                            className={cn(
+                              "relative group/btn w-full overflow-hidden border min-h-[55px] flex items-center justify-center p-4 transition-all duration-300",
+                              isVictory ? "border-emerald-500/50 bg-emerald-900/50 hover:bg-emerald-800/80" : "border-rose-500/50 bg-rose-900/40 hover:bg-rose-800/80"
+                            )}
+                            style={{ clipPath: 'polygon(8% 0, 100% 0, 100% 70%, 92% 100%, 0 100%, 0 30%)' }}
+                          >
+                            <div className={cn("absolute inset-0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000", isVictory ? "bg-gradient-to-r from-emerald-500/0 via-emerald-500/20 to-emerald-500/0" : "bg-gradient-to-r from-rose-500/0 via-rose-500/20 to-rose-500/0")}></div>
+                            <div className={cn("absolute left-0 top-0 w-1 h-full transition-colors", isVictory ? "bg-emerald-700 group-hover/btn:bg-emerald-400" : "bg-rose-700 group-hover/btn:bg-rose-400")}></div>
+                            <span className={cn("relative z-10 font-mono text-sm md:text-base font-bold tracking-[0.2em] transition-colors uppercase drop-shadow-lg flex items-center gap-3", isVictory ? "text-emerald-100 group-hover/btn:text-white" : "text-rose-100 group-hover/btn:text-white")}>
+                              <RefreshCw className="w-5 h-5" /> {isVictory ? "NEXT DEPLOYMENT" : "TRY AGAIN"}
+                            </span>
+                          </button>
+                          
+                          <button 
+                            onClick={backToMenu}
+                            className={cn(
+                              "relative group/btn w-full overflow-hidden border min-h-[55px] flex items-center justify-center p-4 transition-all duration-300",
+                              "border-slate-600/50 bg-slate-900/50 hover:bg-slate-800/80 hover:border-slate-400/50"
+                            )}
+                            style={{ clipPath: 'polygon(8% 0, 100% 0, 100% 70%, 92% 100%, 0 100%, 0 30%)' }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-slate-500/0 via-slate-500/20 to-slate-500/0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000"></div>
+                            <div className="absolute left-0 top-0 w-1 h-full bg-slate-700 group-hover/btn:bg-slate-300 transition-colors"></div>
+                            <span className="relative z-10 font-mono text-sm md:text-base font-bold tracking-[0.2em] text-slate-300 group-hover/btn:text-white transition-colors uppercase drop-shadow-lg flex items-center gap-3">
+                              <ArrowLeft className="w-5 h-5" /> MAIN MENU
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   </div>

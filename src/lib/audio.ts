@@ -6,6 +6,18 @@ export class SoundManager {
   currentBgmInterval: any = null;
   bgmIntensity: 'low' | 'med' | 'high' = 'low';
 
+  setMasterVolume(val: number) {
+    if (this.masterGain) {
+      this.masterGain.gain.value = val;
+    }
+  }
+
+  setBgmVolume(val: number) {
+    if (this.bgmGain) {
+      this.bgmGain.gain.value = val;
+    }
+  }
+
   init() {
     if (!this.ctx) {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;

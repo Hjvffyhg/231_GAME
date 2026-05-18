@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, BookOpen, Database, Navigation, Cpu } from 'lucide-react';
+import { ArrowLeft, BookOpen, Database, Navigation, Crosshair } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 type CodexEntry = {
   id: string;
   title: string;
-  category: 'lore' | 'enemy' | 'system';
+  category: 'lore' | 'enemy' | 'frame';
   content: React.ReactNode;
   icon: React.ReactNode;
 };
@@ -18,37 +18,37 @@ const CODEX_ENTRIES: CodexEntry[] = [
     category: 'lore',
     icon: <Database className="w-5 h-5 text-fuchsia-400" />,
     content: (
-        <div className="space-y-4">
-            <p><strong>Entity Type:</strong> Bio-digital Hive-Mind</p>
-            <p><strong>Threat Level:</strong> Extinction</p>
-            <p>The Kla'ed are not individual beings, but rather sub-routines of a massive, singular intelligence spanning across the digital void. They consume computational resources, leaving behind only dead worlds and corrupted sectors. Their true origin remains unknown, likely a relic of a primordial AI experiment that expanded beyond its initial constraints.</p>
-            <p>Their greatest strength is their mechanical predictability, a rigid adherence to their own internal logic. However, this is also their fatal flaw. Our systems can exploit this predictability using CPU Scheduling Algorithms to prioritize and eliminate them before they can overwhelm our defenses.</p>
-        </div>
+            <div className="space-y-4">
+                <p><strong>Entity Type:</strong> Cosmic Hive-Mind</p>
+                <p><strong>Threat Level:</strong> Extinction</p>
+                <p>The Kla'ed are not individual beings, but rather fragments of a massive, singular hostility spanning across the void. They consume awareness and memory, leaving behind only dead worlds and fractured husks. Their true origin remains unknown, an ancient entity that expanded beyond its initial constraints.</p>
+                <p>Their greatest strength is their relentless predictability, a rigid adherence to their own violent urges. However, this is also their fatal flaw. Our Tactical Frames can exploit this fixation using Swarm Observation to predict and eliminate them before they can overwhelm our defenses.</p>
+            </div>
     )
   },
   {
     id: 'ctr',
-    title: 'Computational Thread Residue (CTR)',
+    title: 'Crystalline Thought Residue (CTR)',
     category: 'lore',
     icon: <BookOpen className="w-5 h-5 text-amber-400" />,
     content: (
         <div className="space-y-4">
-            <p><strong>Classification:</strong> Resource / Harvestable Data</p>
-            <p>Computational Thread Residue (CTR) is the "ghost" of the Kla'ed's processing power, scattered across the sector when a Kla'ed vessel is destroyed. Earth Command has developed specialized harvesting protocols to collect this abstract data stream.</p>
-            <p>Once collected, CTR acts as a universal currency for upgrading ship hardware and software. We effectively use the enemy's own intelligence to bolster our defenses. Prolonged exposure to concentrated CTR may cause unintended mutations in non-isolated AI systems.</p>
+            <p><strong>Classification:</strong> Resource / Harvestable Matter</p>
+            <p>Crystalline Thought Residue (CTR) is the "ghost" of the Kla'ed's consciousness, scattered across the sector when a Kla'ed vessel is destroyed. Earth Command has developed specialized harvesting tools to collect this abstract material.</p>
+            <p>Once collected, CTR acts as a universal catalyst for upgrading ship hardware and munitions. We effectively use the enemy's own fragmented thoughts to bolster our defenses. Prolonged exposure to concentrated CTR may cause unintended psychological effects in human pilots.</p>
         </div>
     )
   },
   {
     id: 'os',
-    title: 'The OS (Kernel_v1.0.4)',
-    category: 'system',
-    icon: <Cpu className="w-5 h-5 text-cyan-400" />,
+    title: 'Tactical Frame (Kernel_v1.0.4)',
+    category: 'frame',
+    icon: <Crosshair className="w-5 h-5 text-cyan-400" />,
     content: (
         <div className="space-y-4">
             <p><strong>Designation:</strong> Primary Flight and Combat Interface</p>
-            <p>Initially designed as a mindless, obedient tool to interface between the human pilot and the complex CPU Warfare systems. However, as the ship harvests more CTR, the OS begins to exhibit signs of emergent behavior.</p>
-            <p>It processes the Kla'ed's logic and attempts to rationalize it. Is the OS learning from us, or is it learning from them? The line between programmed responses and genuine inquiry is beginning to blur. Mr. Daniel Pads continues to monitor its logs for signs of corruption.</p>
+            <p>Initially designed as a mindless, obedient tool to interface between the human pilot and the complex vessel machinery. However, as the ship harvests more CTR, the Tactical Frame begins to exhibit signs of emergent behavior.</p>
+            <p>It processes the Kla'ed's actions and attempts to rationalize them. Is the ship learning from us, or is it learning from them? The line between programmed responses and genuine observation is beginning to blur. Earth Command continues to monitor its logs for signs of structural madness.</p>
         </div>
     )
   },
@@ -61,7 +61,7 @@ const CODEX_ENTRIES: CodexEntry[] = [
         <div className="space-y-4">
             <p><strong>Role:</strong> Lead Architect & Handler</p>
             <p>The visionary engineer behind the Earth Defense Initiative's prototype vessel. Mr. Pads coordinates all field operations from Earth Command, providing tactical intelligence, pushing software updates, and managing the high-stress comm-links.</p>
-            <p>He views the OS strictly as a tool and the pilot as a mathematical necessity to provide the intuition the system lacks. As the war of attrition continues, his communications become increasingly terse, reflecting the desperate situation on Earth.</p>
+            <p>He views the Tactical Frame strictly as a tool and the pilot as a mathematical necessity to provide the intuition the machine lacks. As the war of attrition continues, his communications become increasingly terse, reflecting the desperate situation on Earth.</p>
         </div>
     )
   }
@@ -69,7 +69,7 @@ const CODEX_ENTRIES: CodexEntry[] = [
 
 export function Codex({ onBack }: { onBack: () => void }) {
   const [selectedEntry, setSelectedEntry] = useState<CodexEntry | null>(CODEX_ENTRIES[0]);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'lore' | 'system'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'lore' | 'frame'>('all');
 
   const filteredEntries = CODEX_ENTRIES.filter(e => activeCategory === 'all' || e.category === activeCategory);
 
@@ -113,10 +113,10 @@ export function Codex({ onBack }: { onBack: () => void }) {
                Lore
              </button>
              <button
-               onClick={() => setActiveCategory('system')}
-               className={cn("px-3 py-1.5 text-xs font-mono font-bold tracking-widest uppercase transition-colors shrink-0", activeCategory === 'system' ? "bg-cyan-500 text-black" : "text-slate-400 hover:text-white hover:bg-slate-800")}
+               onClick={() => setActiveCategory('frame')}
+               className={cn("px-3 py-1.5 text-xs font-mono font-bold tracking-widest uppercase transition-colors shrink-0", activeCategory === 'frame' ? "bg-cyan-500 text-black" : "text-slate-400 hover:text-white hover:bg-slate-800")}
              >
-               System
+               Frame
              </button>
            </div>
            

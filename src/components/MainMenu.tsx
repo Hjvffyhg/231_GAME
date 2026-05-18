@@ -18,7 +18,7 @@ const MenuButton = ({
       onClick={!locked ? onClick : undefined}
       className={cn(
         "relative group transition-all duration-300 ease-out",
-        "w-[220px] h-[55px] sm:w-[300px] sm:h-[65px]",
+        "w-[260px] min-h-[55px] sm:w-[360px] lg:w-[420px] sm:min-h-[65px] py-3",
         "flex items-center pl-6 md:pl-8 text-left",
         locked ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:pl-10",
         className
@@ -38,7 +38,7 @@ const MenuButton = ({
       <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20"></div>
 
       {/* Button Text */}
-      <span className="relative z-10 font-mono text-lg md:text-xl font-bold tracking-[0.2em] text-cyan-100 group-hover:text-white transition-colors uppercase drop-shadow-lg">
+      <span className="relative z-10 font-mono text-lg md:text-xl font-bold tracking-[0.2em] text-cyan-100 group-hover:text-white transition-colors uppercase drop-shadow-lg pr-4 break-words">
         {title}
       </span>
 
@@ -100,44 +100,41 @@ export function MainMenu({ onStartGame, onShowReport, onShowModes, onShowShop, o
           <h2 className="text-cyan-500 font-mono tracking-[0.2em] md:tracking-[0.3em] text-[10px] sm:text-xs md:text-base font-bold mb-1 sm:mb-2 uppercase drop-shadow-md">
             Earth Defense Initiative
           </h2>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-mono font-black text-white tracking-widest uppercase drop-shadow-[0_0_20px_rgba(6,182,212,0.5)] leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-mono font-black text-white tracking-widest uppercase drop-shadow-[0_0_20px_rgba(6,182,212,0.5)] leading-tight">
             Space
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
               Survival
             </span>
           </h1>
-          <p className="mt-2 md:mt-6 text-slate-300 font-sans text-xs sm:text-sm md:text-lg max-w-md backdrop-blur-sm bg-black/20 p-2 sm:p-3 md:p-4 border-l-2 border-cyan-500">
-            Intercept the Kla’ed armada. The fate of humanity rests on your performance.
-          </p>
         </div>
         
         {/* Buttons Layout */}
-        <div className="flex-1 flex flex-col justify-end pt-4 sm:pt-8 pb-2 sm:pb-8 lg:pb-10 gap-2 sm:gap-3 md:gap-4 z-10 drop-shadow-2xl shrink-0">
+        <div className="flex flex-col mt-8 sm:mt-12 lg:mt-16 pb-2 sm:pb-8 lg:pb-10 gap-3 sm:gap-4 md:gap-5 z-10 drop-shadow-2xl shrink-0">
           
           <MenuButton 
             onClick={onStartGame} 
-            title="Deploy Prototype"
+            title="START MISSION"
           />
           
           <MenuButton 
             onClick={onShowShop}
-            title="Hangar Bay"
+            title="UPGRADES"
           />
 
           <MenuButton 
             onClick={onShowModes}
-            title="Galaxy Map"
+            title="LEVEL SELECT"
           />
 
           <MenuButton 
             onClick={onShowCodex}
-            title="Data Codex"
+            title="STORY / LORE"
           />
 
           <MenuButton 
             onClick={onShowReport} 
-            title="System Settings"
+            title="ENEMY INFO"
           />
 
         </div>
