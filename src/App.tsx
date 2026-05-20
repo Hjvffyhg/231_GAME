@@ -237,7 +237,7 @@ export default function App() {
                 )}
               </div>
             ) : (
-              <div className="h-full w-full relative bg-[#020617]">
+              <div className="h-full w-full relative bg-[#0A0F1F]">
                 <Report onBack={backToMenu} />
               </div>
             )}

@@ -1148,3 +1148,48 @@ Translated all remaining technical CPU scheduling jargon into emotional, mystery
 > "Apply the camera settings to the tester"
 
 **Result:** Updated the base camera panning logic in `GameCanvas.tsx` to automatically synthesize a virtual on-screen mouse coordinate based on the `autoPilot`'s targeted world coordinate in the previous frame. It prevents the physical cursor from continuously overriding the `state.mouse.x/y` target coordinates while autopilot is active, allowing full dynamic pan offsets and "Dynamic"/"Offset" zoom behaviors to function accurately around the autopilot's programmatic aim focus.
+
+## 174. Fix Clipped Keybind HUD Labels
+> "I want you to solve this issue, look at the player at the SS. Is the player not visible to the right? I want you to adjust all the labels" / "Fix the issue"
+
+**Result:** Fixed a major styling issue in the `GameCanvas.tsx` HUD where the keybind number/letter hints (e.g. "1", "2", "C", "E", "F") for the weapon and skill buttons were rendered completely invisible or heavily clipped. The `clip-path`'s 20% angular corner cuts on the buttons overlapped their `absolute bottom-1 right-2` coordinate position. Reduced the aggressive polygon angles to `10%` / `15%`, widened the container widths slightly (`w-24`), and relocated the keybind text overlays to `top-1 left-2` where they are safely rendered inside the visible region.
+
+## 175. Fix Algorithm Keyboard Binding Conflicts and Render Sync
+> "Finalize the game. Make sure it aligns with the mission. The mission is to apply the 3 CPU algorithm to the game and make it interactive"
+
+**Result:** Audited the logic that injects the 3 CPU algorithms (`FCFS`, `Round-Robin`, `HRRN`) into the Drone AI targeting system. Fixed a severe conflict where keys `1` and `2` were inadvertently modifying the Swarm algorithm (instead of just triggering weapon swaps). Reverted algorithm swapping entirely to the `Q` key, ensuring a completely clean and interactive way for users to manually pivot their swarm behavior. Added a helpful `PRESS Q TO CYCLE ALGO` instruction to the lower HUD. Finally, patched an isolated rendering bug where the drone visuals in the canvas loop were hardcoding the active AI to the wave number instead of reflecting the user's manual interactive choice (`state.currentAlgo`), which now properly syncs the visualizations (Target Locks, Time Slice Rings, Priority Queues) to the active mode across the entire app map.
+
+## 176. Fix Unlimited Ammo Exploit
+> "The ammo seems like unlimited"
+
+**Result:** Addressed an imbalance where the player's passive ammo regeneration (15 ammo/sec) outpaced the consumption rate of the kinetic blaster (approx. 8 ammo/sec), making it physically impossible to run out of ammo if they dipped below 50. I've patched this by implementing a hard ceiling of `250` max ammo. The passive regeneration has been dialed down to `10 ammo/sec` and now *only* activates when the player has stopped firing (`!state.mouse.down`), forcing the player to burst-fire or actually hunt for ammo drops during sustained encounters instead of infinitely holding left click. Increased the ammo pickup yield slightly to 50 (up from 30) to compensate and reward movement.
+
+## 177. Finalized Game Design Document
+> "Read and analyze the prompt history, and let us finalize The GDD because it messed up, and the code was based on it"
+
+**Result:** Performed a comprehensive review of the `PROMPTS.md` history tracking the entire development arc. Completely synchronized and finalized `/docs/GDD.md` (Modules 1 through 5) so it now correctly reflects the actual deployed game rather than outdated initial brainstorming concepts. Addressed discrepancies like applying algorithms to the actual Autopilot Drones instead of enemy paths, stripping out the unbuilt physical Toroidal wrap-around mechanics in favor of Safe Zone decay barriers, and detailing heavily on the Mobile Twin-Stick layout, Galaxy Civilization Modes, Asteroid field physics, Retro Pixel-Art styling, Boss hierarchies (The Cycler / The Executor), and the persistent CTR Fleet Hangar. The document no longer acts as a 'work in progress blueprint', but now serves as the finalized architectural roadmap of the shipped product.
+
+## 178. Create School Requirements Guidelines Document
+> "create an md file under school req name it guidelines.md here the text: Final Game Output Guidelines..."
+
+**Result:** Created the `guidelines.md` document exactly as requested under the `/docs/School_Requirements/` directory. It precisely mirrors the provided content with appropriate Markdown formatting like bullet lists and tables for grading structures.
+
+## 179. Enforce School Guidelines and Revert Unauthorized Changes
+> "follow the guidelines"
+
+**Result:** Evaluated the game and documentation against the provided `guidelines.md` grading rubric. To avoid the "-5 points" deduction for "Changing the approved game title without approval," I reverted the GDD title from the recently modified `Kla'ed Ascendancy: Space Survival` back to exactly `Space Survival` across the documentation. Furthermore, verified that the game successfully implements exact compliance with Section 2b and 2c: it incorporates `FCFS`, plus two Advanced algorithms from the approved list (`Round Robin` and `Highest Response Ratio Next`), all visually tied to the drone AI targeting loop to satisfy the academic requirement. Confirmed there is no inappropriate content and that the core concepts remain aligned with standard requirements.
+
+## 180. Color Palette Alignment Verification
+> "Is the color palette in PR1 aligned/applied to the game?"
+
+**Result:** Audited the codebase to verify strict compliance with the Progress Report 1 (PR1) color palette. Confirmed that Neon Cyan (`#00D9FF`) and Laser Red/Orange (`#EF4444`) were already heavily utilized throughout the canvas rendering and Tailwind UI layers for player abilities and enemy threats respectively. However, the game's void backgrounds were using a generic dark slate (`#020617`), and the shop menus were utilizing generic amber themes instead of Electric Indigo (`#6366F1`). Conducted a full sweep via `multi_edit_file` across `GameCanvas.tsx`, `Shop.tsx`, `App.tsx`, and `index.css` to explicitly inject and enforce the PR1-mandated Deep Space/Midnight Blue (`#0A0F1F`) as the global background color, and fully repainted the "Advanced Thrusters" shop upgrades and secondary UI panels with Electric Indigo (`#6366F1`) drop shadows and borders, ensuring 100% adherence to the originally approved PR1 design document.
+
+## 181. Google Docs Integration
+> "I want to use Google Docs in this app."
+
+**Result:** Finalized OAuth setup with Google using the `https://www.googleapis.com/auth/docs` scope and integrated Firebase Auth for authentication. Modified the post-game telemetry `Report` to feature an "Export to Docs" capability utilizing the Google Docs API. When initiated, it signs the user in, issues an API call to instantiate a new Google Doc, and performs a batch update to push the text of the "Executive Summary" and "Lethality Forecast" into the newly exported file.
+
+## 182. CPU Algorithm Explanation and Deployment Fix
+> "How does the CPU algorithm apply to this game? Deployment failed with the following errors. Fix the applet code based on these logs: Resource 'space-survival' already exists."
+
+**Result:** Explained to the user how the CPU scheduling principles correlate directly to the Auto-Turret Drone targeting behaviors (FCFS locks onto targets until death, RR cycles targets based on a time quantum, and HRRN prioritizes enemies using their wait times and burst properties). Additionally, to bypass the "space-survival already exists" Cloud Run/Platform deployment error without violating the school rubric by heavily altering the in-game title, modified `metadata.json` so the platform provisions the deployment service under a slightly varied resource name (`Space Survival Project`).

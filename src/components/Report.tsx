@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Eye, Activity, Layers, Target, AlertTriangle, Zap, ArrowLeft, BrainCircuit } from 'lucide-react';
+import { Eye, Activity, Layers, Target, AlertTriangle, Zap, ArrowLeft, BrainCircuit, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Mermaid } from './Mermaid';
+import { initAuth, googleSignIn, getAccessToken, User } from '../lib/auth';
 
 const TABS = [
   { id: 'summary', icon: Eye, label: 'Observation Summary' },
@@ -14,22 +15,120 @@ const TABS = [
 
 export function Report({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState('summary');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState('');
+  const [needsAuth, setNeedsAuth] = useState(false);
+  
+  useEffect(() => {
+    // Initialize auth listener
+    const unsubscribe = initAuth(
+      (user, token) => setNeedsAuth(false),
+      () => setNeedsAuth(true)
+    );
+    return () => unsubscribe();
+  }, []);
+
+  const handleExportDocs = async () => {
+    try {
+      setIsExporting(true);
+      setExportMessage('Authenticating...');
+      
+      let token = await getAccessToken();
+      if (!token) {
+        setNeedsAuth(true);
+        const authResult = await googleSignIn();
+        if (authResult?.accessToken) {
+          token = authResult.accessToken;
+          setNeedsAuth(false);
+        } else {
+          throw new Error('Authentication failed');
+        }
+      }
+
+      setExportMessage('Creating document...');
+      
+      const docTitle = `Kla'ed Intelligence Report - ${new Date().toLocaleDateString()}`;
+      
+      // Create an empty document
+      const createRes = await fetch('https://docs.googleapis.com/v1/documents', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: docTitle })
+      });
+      
+      if (!createRes.ok) throw new Error('Failed to create document');
+      const docData = await createRes.json();
+      const documentId = docData.documentId;
+
+      setExportMessage('Writing content...');
+
+      // Update document content
+      const requests = [
+        {
+          insertText: {
+            location: { index: 1 },
+            text: `Kla'ed Intelligence Report\n\nEXECUTIVE SUMMARY\nOur telemetry indicates the Kla'ed are not attacking randomly. They exhibit three distinct psychological phases that escalate as our Tactical Frames gather Crystalline Thought Residue (CTR).\n\nPhase 1: Fixation\nThe swarm behaves predictably, hyper-focusing on the oldest perceived threat before moving to the next.\n\nPhase 2: Restlessness\nThe hive-mind fragments its attention. It begins cycling its aggression rapidly across all available presences, overwhelming single-target defenses.\n\nPhase 3: Vindictive Learning\nThe most dangerous state. The swarm recognizes which presences have been ignored and violently prioritizes them. The longer it watches you, the more vicious the execution.\n\nLETHALITY FORECAST\nFixated: Manageable (Low Unpredictability)\nRestless: Overwhelming (Even Pressure)\nVindictive: Extremely Fatal (Vengeful Spiking)\n`
+          }
+        }
+      ];
+
+      const updateRes = await fetch(`https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requests })
+      });
+
+      if (!updateRes.ok) throw new Error('Failed to update document');
+
+      setExportMessage('Export complete!');
+      setTimeout(() => setExportMessage(''), 3000); // Clear message
+      
+    } catch (err: any) {
+      console.error(err);
+      setExportMessage('Export failed.');
+      setTimeout(() => setExportMessage(''), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-[#020617] overflow-hidden flex flex-col font-sans text-slate-200 p-4 md:p-8">
+    <div className="absolute inset-0 w-full h-full bg-[#0A0F1F] overflow-hidden flex flex-col font-sans text-slate-200 p-4 md:p-8">
       {/* Background Holographic Grid Effect */}
       <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #38bdf8 0%, transparent 60%), linear-gradient(rgba(56,189,248,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.1) 1px, transparent 1px)', backgroundSize: '100% 100%, 40px 40px, 40px 40px' }} />
       
       {/* Header */}
-      {onBack && (
-         <button 
-           onClick={onBack}
-           className="relative z-10 flex items-center gap-2 px-4 py-2 bg-slate-900 border border-cyan-900/50 hover:border-cyan-500 text-cyan-500 hover:text-cyan-300 transition-all font-mono text-xs tracking-widest uppercase mb-4 w-max shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-           style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}
-         >
-           <ArrowLeft size={16} /> Close Terminal
-         </button>
-      )}
+      <div className="relative z-10 flex justify-between items-center mb-4">
+        {onBack ? (
+           <button 
+             onClick={onBack}
+             className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-cyan-900/50 hover:border-cyan-500 text-cyan-500 hover:text-cyan-300 transition-all font-mono text-xs tracking-widest uppercase w-max shadow-[0_0_15px_rgba(6,182,212,0.1)]"
+             style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}
+           >
+             <ArrowLeft size={16} /> Close Terminal
+           </button>
+        ) : <div />}
+        
+        <div className="flex items-center gap-3">
+          {exportMessage && (
+            <span className="text-xs font-mono text-cyan-400 animate-pulse uppercase tracking-widest mr-2">{exportMessage}</span>
+          )}
+          <button 
+            onClick={handleExportDocs}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-900/40 border border-indigo-500/50 hover:bg-indigo-800/60 text-indigo-300 hover:text-white transition-all font-mono text-xs tracking-widest uppercase disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+            style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}
+          >
+            <FileText size={16} /> {isExporting ? "Exporting..." : needsAuth ? "Sign In & Export" : "Export to Docs"}
+          </button>
+        </div>
+      </div>
 
       <div className="relative z-10 flex flex-col md:flex-row h-full w-full bg-slate-950/80 border border-cyan-900/50 backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.1)]" style={{ clipPath: 'polygon(0 0, 98% 0, 100% 2%, 100% 100%, 2% 100%, 0 98%)' }}>
         

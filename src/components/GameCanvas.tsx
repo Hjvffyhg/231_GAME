@@ -386,6 +386,8 @@ export function GameCanvas({
       bossesSpawned: { boss: false, boss_rr: false, boss_hrrn: false },
       elapsed: 0,
       lastDamageSource: "",
+      currentZoom: 1,
+      targetZoom: 1,
     };
     gameStateRef.current = state;
 
@@ -515,93 +517,6 @@ export function GameCanvas({
             color: color,
           });
           soundManager.playAlgoSelect(state.currentAlgo);
-        }
-      }
-      if (e.key === "1") {
-        if (hasMalware) {
-          state.damageNumbers.push({
-            x: state.player.x,
-            y: state.player.y - 40,
-            amount: 0,
-            life: 1.5,
-            vx: 0,
-            vy: -20,
-            text: `TARGETING LOCKED`,
-            isCrit: true,
-            color: "#ef4444",
-          });
-        } else if (state.currentAlgo !== "FCFS" && !checkThrashing()) {
-          state.currentAlgo = "FCFS";
-          state.damageNumbers.push({
-            x: state.player.x,
-            y: state.player.y - 40,
-            amount: 0,
-            life: 2.0,
-            vx: 0,
-            vy: -20,
-            text: `IT IS FOCUSED ON YOU`,
-            isCrit: false,
-            color: "#3b82f6",
-          });
-          soundManager.playAlgoSelect("FCFS");
-        }
-      }
-      if (e.key === "2") {
-        if (hasMalware) {
-          state.damageNumbers.push({
-            x: state.player.x,
-            y: state.player.y - 40,
-            amount: 0,
-            life: 1.5,
-            vx: 0,
-            vy: -20,
-            text: `TARGETING LOCKED`,
-            isCrit: true,
-            color: "#ef4444",
-          });
-        } else if (state.currentAlgo !== "RR" && !checkThrashing()) {
-          state.currentAlgo = "RR";
-          state.damageNumbers.push({
-            x: state.player.x,
-            y: state.player.y - 40,
-            amount: 0,
-            life: 2.0,
-            vx: 0,
-            vy: -20,
-            text: `IT BEGINS PATROL`,
-            isCrit: false,
-            color: "#10b981",
-          });
-          soundManager.playAlgoSelect("RR");
-        }
-      }
-      if (e.key === "3") {
-        if (hasMalware) {
-          state.damageNumbers.push({
-            x: state.player.x,
-            y: state.player.y - 40,
-            amount: 0,
-            life: 1.5,
-            vx: 0,
-            vy: -20,
-            text: `TARGETING LOCKED`,
-            isCrit: true,
-            color: "#ef4444",
-          });
-        } else if (state.currentAlgo !== "HRRN" && !checkThrashing()) {
-          state.currentAlgo = "HRRN";
-          state.damageNumbers.push({
-            x: state.player.x,
-            y: state.player.y - 40,
-            amount: 0,
-            life: 2.0,
-            vx: 0,
-            vy: -20,
-            text: `IT PREPARES TO ATTACK`,
-            isCrit: false,
-            color: "#f43f5e",
-          });
-          soundManager.playAlgoSelect("HRRN");
         }
       }
       if (e.key.toLowerCase() === "g") {
@@ -928,6 +843,7 @@ export function GameCanvas({
         else if (cfg.algo === "HRRN")
           stats += `<br/><span class="text-[#fbbf24]">RESENTMENT CALC: ON</span>`;
 
+        stats += `<br/><span class="text-slate-400 opacity-60 mt-1 block">PRESS Q TO CYCLE ALGO</span>`;
         stats += `<br/><span class="text-slate-400 opacity-60 mt-1 block">R-CLICK TO SET TARGET</span>`;
 
         if (algoStatsRef.current.innerHTML !== stats) {
@@ -1921,8 +1837,11 @@ export function GameCanvas({
       state.isOutsideSafeZone = false;
 
       // 4. Combat (Shooting)
-      if (state.player.ammo < 50) {
-        state.player.ammo += 15 * dt; // Passive ammo regen
+      if (state.player.ammo < 50 && !state.mouse.down) {
+        state.player.ammo += 10 * dt; // Passive ammo regen when not firing
+      }
+      if (state.player.ammo > 250) {
+        state.player.ammo = 250;
       }
 
       const isWpn1 = state.player.selectedWeapon === 1;
@@ -3145,7 +3064,7 @@ export function GameCanvas({
                 state.player.hp + 25,
               );
             } else if (c.type === "ammo") {
-              state.player.ammo += 30;
+              state.player.ammo = Math.min(250, state.player.ammo + 50);
             } else if (c.type === "shield") {
               state.player.shield = Math.min(100, state.player.shield + 50);
             } else if (c.type === "speed") {
@@ -3247,15 +3166,15 @@ export function GameCanvas({
       if (wpn1Ref.current && wpn2Ref.current) {
         const is1 = state.player.selectedWeapon === 1;
         const clipPoly =
-          "polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)";
+          "polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%)";
 
         wpn1Ref.current.style.clipPath = clipPoly;
-        wpn1Ref.current.className = `w-20 h-12 md:w-[88px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${is1 ? "bg-rose-950/80 border-2 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)] text-rose-400" : "bg-slate-900/60 border border-slate-700 text-slate-500"}`;
-        wpn1Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] font-black tracking-widest px-1.5 py-0.5 border-t border-b border-rose-500/50 bg-rose-950/80 drop-shadow-lg text-rose-100 uppercase">KINETIC</span><div class="absolute bottom-1 right-2 md:right-3 text-slate-400 text-[8px] z-10 font-bold drop-shadow-md">1</div>`;
+        wpn1Ref.current.className = `w-24 h-12 md:w-[100px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${is1 ? "bg-rose-950/80 border-2 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)] text-rose-400" : "bg-slate-900/60 border border-slate-700 text-slate-500"}`;
+        wpn1Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] font-black tracking-widest px-1.5 py-0.5 border-t border-b border-rose-500/50 bg-rose-950/80 drop-shadow-lg text-rose-100 uppercase">KINETIC</span><div class="absolute top-1 left-2 text-slate-400 text-[8px] md:text-[9px] z-10 font-bold drop-shadow-md">1</div>`;
 
         wpn2Ref.current.style.clipPath = clipPoly;
-        wpn2Ref.current.className = `w-20 h-12 md:w-[88px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${!is1 ? "bg-rose-950/80 border-2 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)] text-rose-400" : "bg-slate-900/60 border border-slate-700 text-slate-500"}`;
-        wpn2Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] font-black tracking-widest px-1.5 py-0.5 border-t border-b border-slate-500/50 bg-slate-950/80 drop-shadow-lg text-slate-100 uppercase">PLASMA</span><div class="absolute bottom-1 right-2 md:right-3 text-slate-400 text-[8px] z-10 font-bold drop-shadow-md">2</div>`;
+        wpn2Ref.current.className = `w-24 h-12 md:w-[100px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${!is1 ? "bg-rose-950/80 border-2 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)] text-rose-400" : "bg-slate-900/60 border border-slate-700 text-slate-500"}`;
+        wpn2Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] font-black tracking-widest px-1.5 py-0.5 border-t border-b border-slate-500/50 bg-slate-950/80 drop-shadow-lg text-slate-100 uppercase">PLASMA</span><div class="absolute top-1 left-2 text-slate-400 text-[8px] md:text-[9px] z-10 font-bold drop-shadow-md">2</div>`;
       }
 
       if (dshRef.current) {
@@ -3263,7 +3182,7 @@ export function GameCanvas({
         const isReady = cd <= 0 && state.player.stamina >= 15;
         const bgHeight = cd > 0 ? (cd / 3.0) * 100 : 0;
         dshRef.current.style.clipPath =
-          "polygon(15% 0%, 100% 0%, 85% 100%, 0% 100%)";
+          "polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%)";
         let stateClass =
           "bg-slate-900/80 border border-slate-700 text-slate-500";
         if (isReady)
@@ -3287,7 +3206,7 @@ export function GameCanvas({
              </div>
              <span class="z-10 text-[9px] md:text-[12px] font-black tracking-wider px-1 py-0.5 border-t border-b border-orange-500/50 bg-orange-950/80 drop-shadow-lg text-orange-100 uppercase">DASH</span>
              ${cdOverlay}
-             <div class="absolute bottom-1 right-3.5 md:right-4 text-slate-400 text-[8px] md:text-[10px] z-10 font-bold drop-shadow-md">C</div>
+             <div class="absolute top-1 left-2 md:left-3 text-slate-400 text-[8px] md:text-[10px] z-10 font-bold drop-shadow-md">C</div>
           `;
       }
 
@@ -3296,7 +3215,7 @@ export function GameCanvas({
         const isReady = cd <= 0 && state.player.stamina >= 20;
         const bgHeight = cd > 0 ? (cd / 5.0) * 100 : 0;
         shdSkillRef.current.style.clipPath =
-          "polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)";
+          "polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%)";
         let stateClass =
           "bg-slate-900/80 border border-slate-700 text-slate-500";
         if (isReady)
@@ -3306,7 +3225,7 @@ export function GameCanvas({
           stateClass =
             "bg-red-950/40 border border-red-900 text-red-500 grayscale transition-colors duration-500 animate-pulse";
 
-        shdSkillRef.current.className = `w-18 h-12 md:w-[80px] md:h-14 shrink-0 relative flex flex-col items-center justify-center font-mono backdrop-blur-md transition-all duration-300 ${stateClass}`;
+        shdSkillRef.current.className = `w-18 h-12 md:w-[84px] md:h-14 shrink-0 relative flex flex-col items-center justify-center font-mono backdrop-blur-md transition-all duration-300 ${stateClass}`;
 
         let cdOverlay = "";
         if (cd > 0)
@@ -3320,7 +3239,7 @@ export function GameCanvas({
              </div>
              <span class="z-10 text-[9px] md:text-[11px] font-black tracking-widest px-1.5 py-0.5 border-t border-b border-blue-500/50 bg-blue-950/80 drop-shadow-lg text-blue-100 uppercase">SHIELD</span>
              ${cdOverlay}
-             <div class="absolute bottom-1 right-2 md:right-3 text-slate-400 text-[8px] md:text-[10px] z-10 font-bold drop-shadow-md">E</div>
+             <div class="absolute top-1 left-2 md:left-3 text-slate-400 text-[8px] md:text-[10px] z-10 font-bold drop-shadow-md">E</div>
           `;
       }
 
@@ -3335,7 +3254,7 @@ export function GameCanvas({
               ? (state.overclockTimer / 5.0) * 100
               : 0;
         ocSkillRef.current.style.clipPath =
-          "polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)";
+          "polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%)";
         let stateClass =
           "bg-slate-900/80 border border-slate-700 text-slate-500";
         if (isActive)
@@ -3345,7 +3264,7 @@ export function GameCanvas({
           stateClass =
             "bg-fuchsia-950/40 border border-fuchsia-500 text-fuchsia-400 shadow-[0_0_10px_rgba(217,70,239,0.2)]";
 
-        ocSkillRef.current.className = `w-20 h-12 md:w-[90px] md:h-14 shrink-0 relative flex flex-col items-center justify-center font-mono backdrop-blur-md transition-all duration-300 ${stateClass}`;
+        ocSkillRef.current.className = `w-24 h-12 md:w-[100px] md:h-14 shrink-0 relative flex flex-col items-center justify-center font-mono backdrop-blur-md transition-all duration-300 ${stateClass}`;
 
         let cdOverlay = "";
         if (cd > 0)
@@ -3355,9 +3274,9 @@ export function GameCanvas({
              <div class="absolute inset-0 overflow-hidden outline-none pointer-events-none">
                 <div class="absolute bottom-0 left-0 right-0 ${isActive ? "bg-fuchsia-500/50" : "bg-fuchsia-500/20"}" style="height: ${bgHeight}%"></div>
              </div>
-             <span class="z-10 text-[8.5px] md:text-[10.5px] font-black tracking-widest px-1 py-0.5 border-t border-b border-fuchsia-500/50 bg-fuchsia-950/80 drop-shadow-lg text-fuchsia-100 uppercase">OVERDRIVE</span>
+             <span class="z-10 text-[8.5px] md:text-[10px] font-black tracking-widest px-1 py-0.5 border-t border-b border-fuchsia-500/50 bg-fuchsia-950/80 drop-shadow-lg text-fuchsia-100 uppercase">OVERDRIVE</span>
              ${cdOverlay}
-             <div class="absolute bottom-1 right-2 md:right-3 text-slate-400 text-[8px] md:text-[10px] z-10 font-bold drop-shadow-md">F</div>
+             <div class="absolute top-1 left-2 md:left-3 text-slate-400 text-[8px] md:text-[10px] z-10 font-bold drop-shadow-md">F</div>
           `;
       }
 
@@ -3653,7 +3572,7 @@ export function GameCanvas({
         );
         grad.addColorStop(0, "#475569"); // Highlight rim
         grad.addColorStop(0.4, "#1e293b"); // Midtone rock
-        grad.addColorStop(1, "#020617"); // Pitch black shadow
+        grad.addColorStop(1, "#0A0F1F"); // Pitch black shadow
 
         ctx.fillStyle = grad;
         ctx.fill();
@@ -3678,7 +3597,7 @@ export function GameCanvas({
         }
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // Dark crater shadow
         ctx.fill();
-        ctx.strokeStyle = "#020617";
+        ctx.strokeStyle = "#0A0F1F";
         ctx.lineWidth = 1;
         ctx.stroke();
 
@@ -3876,17 +3795,25 @@ export function GameCanvas({
 
       // Enemies
       const currentWave = Math.floor(state.diffTimer / 60) + 1;
-      let cfg = { algo: "FCFS" as SchedulerAlgo, cores: 2, quantum: 0.5 };
+      let hasMalwareRender = state.enemies.some((e: any) => e.type === "malware");
+      let currentActiveAlgoRender = hasMalwareRender
+        ? ("FCFS" as SchedulerAlgo)
+        : (state.currentAlgo as SchedulerAlgo);
+
+      let cfg = { algo: currentActiveAlgoRender, cores: 2, quantum: 0.5 };
       if (currentWave === 2) {
-        cfg = { algo: "RR", cores: 3, quantum: 0.8 };
+        cfg.cores = 3; 
+        cfg.quantum = 0.8;
       } else if (currentWave === 3) {
-        cfg = { algo: "RR", cores: 4, quantum: 0.4 };
+        cfg.cores = 4;
+        cfg.quantum = 0.4;
       } else if (currentWave >= 4) {
-        cfg = {
-          algo: "HRRN",
-          cores: Math.min(8, 3 + Math.floor((currentWave - 4) / 2)),
-          quantum: 0.5,
-        };
+        cfg.cores = Math.min(8, 3 + Math.floor((currentWave - 4) / 2));
+        cfg.quantum = 0.5;
+      }
+      
+      if (state.overclockTimer > 0) {
+        cfg.cores = Math.min(12, cfg.cores + 4);
       }
 
       // Draw inactive enemies first, then active to layer correctly
@@ -4853,7 +4780,7 @@ export function GameCanvas({
         mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
 
         // Background Base
-        mCtx.fillStyle = "#020617";
+        mCtx.fillStyle = "#0A0F1F";
         mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
 
         // Holographic Grid Lines
@@ -5007,7 +4934,7 @@ export function GameCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-[#020617] overflow-hidden font-sans select-none border border-cyan-900/50 shadow-[inset_0_0_50px_rgba(6,182,212,0.05)]"
+      className="relative w-full h-full bg-[#0A0F1F] overflow-hidden font-sans select-none border border-cyan-900/50 shadow-[inset_0_0_50px_rgba(6,182,212,0.05)]"
     >
       {/* Tactical Grid Overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(6,182,212,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.2)_1px,transparent_1px)] bg-[size:40px_40px] z-0"></div>
@@ -5141,7 +5068,7 @@ export function GameCanvas({
               ref={minimapRef}
               width={120}
               height={120}
-              className="w-full h-full block bg-[#020617] border border-cyan-900/50 relative group-hover:border-cyan-400/50 transition-colors"
+              className="w-full h-full block bg-[#0A0F1F] border border-cyan-900/50 relative group-hover:border-cyan-400/50 transition-colors"
             />
             <div
               className="absolute top-0 right-0 bg-cyan-500/20 w-4 h-4"
@@ -5345,7 +5272,7 @@ export function GameCanvas({
           >
             <canvas
               ref={expandedMinimapRef}
-              className="w-full h-full block bg-[#020617] border border-cyan-900/50"
+              className="w-full h-full block bg-[#0A0F1F] border border-cyan-900/50"
             />
 
             {/* Decorative Corner Accents */}

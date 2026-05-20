@@ -14,7 +14,7 @@ const SHIPS: { id: ShipName; name: string; cost: number; desc: string; stats: { 
 const UPGRADES = [
   { id: 'hp', name: 'Hull Reinforcement', icon: Shield, desc: '+20 Max HP per level', maxLevel: 10, baseCost: 500, costMult: 1.5, color: 'cyan' },
   { id: 'dmg', name: 'Weapon Overclock', icon: Zap, desc: '+20% Damage per level', maxLevel: 10, baseCost: 1000, costMult: 1.8, color: 'rose' },
-  { id: 'speed', name: 'Advanced Thrusters', icon: Wind, desc: '+10% Speed per level', maxLevel: 5, baseCost: 800, costMult: 1.4, color: 'amber' },
+  { id: 'speed', name: 'Advanced Thrusters', icon: Wind, desc: '+10% Speed per level', maxLevel: 5, baseCost: 800, costMult: 1.4, color: 'indigo' },
 ];
 
 export function ShopScreen({ onBack }: { onBack: () => void }) {
@@ -68,10 +68,10 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-[#020617] overflow-hidden flex flex-col font-sans">
+    <div className="absolute inset-0 w-full h-full bg-[#0A0F1F] overflow-hidden flex flex-col font-sans">
       {/* Background Grid */}
       <div className="absolute inset-0 pointer-events-none opacity-10 bg-[linear-gradient(rgba(6,182,212,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.2)_1px,transparent_1px)] bg-[size:40px_40px] z-0"></div>
-      <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,_transparent_0%,_#020617_100%)] z-0"></div>
+      <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,_transparent_0%,_#0A0F1F_100%)] z-0"></div>
 
       {/* Header Area */}
       <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end p-6 md:p-8 md:pt-12 border-b border-cyan-900/50 bg-slate-950/80 backdrop-blur-md shadow-[0_10px_30px_rgba(6,182,212,0.05)]">
@@ -190,9 +190,9 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
             
             // Color mapping
             const themeColors = {
-                cyan: { text: 'text-cyan-400', border: 'border-cyan-500/30', bg: 'bg-cyan-500', glow: 'shadow-[0_0_10px_rgba(34,211,238,0.5)]' },
-                rose: { text: 'text-rose-400', border: 'border-rose-500/30', bg: 'bg-rose-500', glow: 'shadow-[0_0_10px_rgba(244,63,94,0.5)]' },
-                amber: { text: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500', glow: 'shadow-[0_0_10px_rgba(245,158,11,0.5)]' }
+                cyan: { text: 'text-[#00D9FF]', border: 'border-[#00D9FF]/30', bg: 'bg-[#00D9FF]', glow: 'shadow-[0_0_10px_rgba(0,217,255,0.5)]' },
+                rose: { text: 'text-[#EF4444]', border: 'border-[#EF4444]/30', bg: 'bg-[#EF4444]', glow: 'shadow-[0_0_10px_rgba(239,68,68,0.5)]' },
+                indigo: { text: 'text-[#6366F1]', border: 'border-[#6366F1]/30', bg: 'bg-[#6366F1]', glow: 'shadow-[0_0_10px_rgba(99,102,241,0.5)]' }
             };
             const theme = themeColors[upg.color as keyof typeof themeColors] || themeColors.cyan;
 
