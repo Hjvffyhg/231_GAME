@@ -1541,3 +1541,8 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 > "Now let's focus on the game demo documentation in readme.md"
 
 **Result:** Integrated a new "Game Demonstration Protocol" section precisely aligning with the University PDF requirements for the 5-minute final game demo. Outlined a 5-step checklist for the students to effectively showcase core gameplay, UI navigation, progression loops, and most importantly, the runtime application of the assigned CPU Scheduling logic (FCFS, RR, HRRN) dynamically processing using the AI Autopilot tester view.
+
+## 236. Unfold README Screenshots
+> "can make the readme.md like this? like the ss/picture is already visible there"
+
+**Result:** Removed the collapsible `<details>` and `<summary>` HTML tags around the screenshots section in `README.md` to ensure all 14 attached preview images display instantly by default without requiring the user to unfold the section.

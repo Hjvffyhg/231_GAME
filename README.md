@@ -37,9 +37,6 @@
 
 Here is a look at the various systems and HUD elements in Space Survival:
 
-<details>
-<summary>Click to view screenshots</summary>
-
 ### Command & Control
 * **Main Menu**: Initializing the Earth Defense framework.
   ![Main Menu](./docs/screenshots/Main_Menu.png)
@@ -73,8 +70,6 @@ Here is a look at the various systems and HUD elements in Space Survival:
   ![Victory Screen](./docs/screenshots/Mission_Complete.png)
 * **Defeat Screen**: System failure logs emphasizing the destructive event type.
   ![Defeat Screen](./docs/screenshots/Mission_Failed.png)
-
-</details>
 
 ---
 
