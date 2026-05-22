@@ -488,7 +488,8 @@ export function GameCanvas({
       if (e.key === "Escape" || e.key.toLowerCase() === "p" || e.key === " ") {
         togglePause();
       }
-      if (e.key.toLowerCase() === "y") { // moved autopilot to y
+      if (e.key.toLowerCase() === "y") {
+        // moved autopilot to y
         state.autoPilot = !state.autoPilot;
         state.notification = {
           time: 4.0,

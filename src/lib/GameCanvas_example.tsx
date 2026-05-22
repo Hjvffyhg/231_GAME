@@ -3,7 +3,7 @@
 //  This is a usage guide — adapt it to fit your existing GameCanvas.
 // ============================================================
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 import {
   loadShip,
   loadAllProjectiles,
@@ -11,14 +11,14 @@ import {
   AnimSprite,
   SHIP_CONFIGS,
   PROJECTILE_CONFIGS,
-} from '../lib/voidFleet';
+} from "../lib/voidFleet";
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
-    const ctx    = canvas.getContext('2d')!;
+    const ctx = canvas.getContext("2d")!;
 
     // CRITICAL: always set this for pixel art
     ctx.imageSmoothingEnabled = false;
@@ -28,29 +28,38 @@ export default function GameCanvas() {
 
     async function init() {
       // 1. Load ship sprites (do this once, then cache / pass via props/context)
-      const fighterSprites     = await loadShip('Fighter');
-      const dreadnoughtSprites = await loadShip('Dreadnought');
-      const projectiles        = await loadAllProjectiles();
+      const fighterSprites = await loadShip("Fighter");
+      const dreadnoughtSprites = await loadShip("Dreadnought");
+      const projectiles = await loadAllProjectiles();
 
       // 2. Create ship renderers
       //    ShipRenderer(sprites, config, scale)
-      const player = new ShipRenderer(fighterSprites,     SHIP_CONFIGS['Fighter'],     3);
-      const boss   = new ShipRenderer(dreadnoughtSprites, SHIP_CONFIGS['Dreadnought'], 2);
+      const player = new ShipRenderer(
+        fighterSprites,
+        SHIP_CONFIGS["Fighter"],
+        3,
+      );
+      const boss = new ShipRenderer(
+        dreadnoughtSprites,
+        SHIP_CONFIGS["Dreadnought"],
+        2,
+      );
 
       // 3. Create a bullet AnimSprite
-      const bulletCfg = PROJECTILE_CONFIGS['Bullet'];
+      const bulletCfg = PROJECTILE_CONFIGS["Bullet"];
       const bullet = new AnimSprite(
-        projectiles['Bullet'],
+        projectiles["Bullet"],
         bulletCfg.frameW,
         bulletCfg.frameH,
         bulletCfg.frames,
-        12, true,
+        12,
+        true,
       );
 
       // 4. Demo: trigger effects
-      setTimeout(() => player.triggerWeapons(),     500);
-      setTimeout(() => boss.triggerShield(),       1200);
-      setTimeout(() => boss.triggerDestruction(),  2500);
+      setTimeout(() => player.triggerWeapons(), 500);
+      setTimeout(() => boss.triggerShield(), 1200);
+      setTimeout(() => boss.triggerDestruction(), 2500);
 
       // 5. Game loop
       function loop(now: number) {
@@ -66,7 +75,7 @@ export default function GameCanvas() {
 
         // Draw — pass canvas centre positions
         player.draw(ctx, 240, 480);
-        boss.draw(ctx,   240, 160);
+        boss.draw(ctx, 240, 160);
         bullet.draw(ctx, 240, 300, 2); // x, y, scale
 
         animId = requestAnimationFrame(loop);
@@ -84,7 +93,7 @@ export default function GameCanvas() {
       ref={canvasRef}
       width={480}
       height={640}
-      style={{ imageRendering: 'pixelated' }}
+      style={{ imageRendering: "pixelated" }}
     />
   );
 }

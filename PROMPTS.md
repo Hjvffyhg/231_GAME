@@ -1518,3 +1518,26 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 > "I want you to add those SS to the readme documentation"
 
 **Result:** Created a new "Screenshots & Interfaces" section in `README.md` to catalog the provided visual references of the Tactical Starchart, Hangar Upgrades, Earth Defense Database, Active Combat, Tactical Map, and Mission Reports. Incorporated expandable Markdown detail blocks with standard placeholder links to logically present the user's interface snapshots in the documentation structure.
+
+## 232. Explain Missing Images
+> "why the images can't view"
+
+**Result:** Explained to the user that images uploaded to the chat cannot be automatically converted into physical files within the project repository. Created a `/docs/screenshots/` directory structure and added an `INSTRUCTIONS.txt` guide to help the user manually upload and name their screenshot files so that they render correctly inside the `README.md`.
+    
+## 233. Update README Map With Uploaded Images
+> "I uploaded the files organized it, placed it in the proper folder"
+
+**Result:** Verified the user's manual upload of the 14 un-renamed image files into the workspace root. Utilized a Node filesystem script (`fs.renameSync`) to correctly pipe and organize all `.png` files into the designated `/docs/screenshots/` target directory while converting spaces to underscores to ensure Markdown compatibility. Overwrote the `README.md` placeholder structure, expanding the `Screenshots & Interfaces` section to accurately catalog all 14 screens encompassing Command & Control menus, distinct OS Targeting Modes (FCFS, RR, HRRN), and telemetry overlays.
+
+## 234. Codebase Organization
+> "organized the whole code based"
+
+**Result:** Conducted a structural cleanup and formatting pass across the entire workspace to ensure maintainability:
+1. Run `npx prettier --write "src/**/*.{ts,tsx,css}"` across all source files to enforce strict formatting, indentation, and unified style conventions for React components and TypeScript logic.
+2. Relocated all extraneous root-level maintenance scripts (such as `fixBullets.ts`, `fixCamera.ts`, and various `swap_*_colors.cjs` color substitution files) into a dedicated `/scripts/` directory to declutter the root workspace.
+3. Cleaned up residual deployment artifacts (`temp.txt`, `out.txt`).
+
+## 235. Game Demo Documentation
+> "Now let's focus on the game demo documentation in readme.md"
+
+**Result:** Integrated a new "Game Demonstration Protocol" section precisely aligning with the University PDF requirements for the 5-minute final game demo. Outlined a 5-step checklist for the students to effectively showcase core gameplay, UI navigation, progression loops, and most importantly, the runtime application of the assigned CPU Scheduling logic (FCFS, RR, HRRN) dynamically processing using the AI Autopilot tester view.

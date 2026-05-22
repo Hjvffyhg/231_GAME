@@ -41,28 +41,59 @@ Here is a look at the various systems and HUD elements in Space Survival:
 <summary>Click to view screenshots</summary>
 
 ### Command & Control
+* **Main Menu**: Initializing the Earth Defense framework.
+  ![Main Menu](./docs/screenshots/Main_Menu.png)
 * **Tactical Starchart (Level Select)**: Authorize deployment into higher threat sectors.
-  ![Tactical Starchart](./docs/screenshots/starchart.png)
+  ![Tactical Starchart](./docs/screenshots/Tactical_Starchart.png)
 * **Hangar Upgrades**: Refit chassis types like the Bomber and allocate upgrade nodes.
-  ![Hangar Upgrades](./docs/screenshots/hangar.png)
+  ![Hangar Upgrades](./docs/screenshots/Hangar_Fleet.png)
 * **Earth Defense Database**: View personnel files and Kla'ed Armada lore.
-  ![Database](./docs/screenshots/database.png)
+  ![Database](./docs/screenshots/Database_info.png)
+* **System Settings**: Adjust visual, audio, and HUD diagnostics.
+  ![Settings](./docs/screenshots/Settings.png)
 
 ### Combat & Telemetry
-* **Active Engagement**: Focus and Patrol algorithmic drone targeting in action.
-  ![Gameplay Combat](./docs/screenshots/gameplay-combat.png)
+* **FCFS / Patrol Mode**: Drone tracking using First-Come First-Served arrays.
+  ![FCFS Targeting](./docs/screenshots/FCFS_drone.png)
+* **Round Robin Mode**: Spread damage across the entire cluster.
+  ![Round Robin Targeting](./docs/screenshots/RR_drone.png)
+* **HRRN Mode**: Highest Response Ratio Next dynamically targets oldest threats.
+  ![HRRN Targeting](./docs/screenshots/HRRNdrone.png)
 * **Tactical Map**: Live radar feed evaluating positional vectors and anomalies.
-  ![Tactical Map](./docs/screenshots/tactical-map.png)
-* **OS Interruption (Tactical Pause)**: Halt telemetry to adjust audio/visual settings.
-  ![Tactical Pause](./docs/screenshots/pause-menu.png)
+  ![Tactical Map](./docs/screenshots/Mini_map_zoom.png)
+* **Hazard Zone Detection**: Real-time alerts for incoming spatial anomalies.
+  ![Hazard Zone](./docs/screenshots/Hazard_zone.png)
+* **OS Interruption (Tactical Pause)**: Halt telemetry to examine Swarm Observation.
+  ![Tactical Pause](./docs/screenshots/Tactical_Frame_Suspended.png)
 
 ### Post-Mission Analysis
 * **Mission Report (Swarm Observation)**: Analyze OS-level adaptations like Fixation and Restlessness.
-  ![Mission Report](./docs/screenshots/mission-report.png)
-* **Victory / Defeat Screens**: Final combat scores and system failure logs.
-  ![Victory Screen](./docs/screenshots/victory-screen.png)
+  ![Mission Report](./docs/screenshots/Mission_report.png)
+* **Victory Screen**: Final combat scores and confirmed destruction of the hive flagship.
+  ![Victory Screen](./docs/screenshots/Mission_Complete.png)
+* **Defeat Screen**: System failure logs emphasizing the destructive event type.
+  ![Defeat Screen](./docs/screenshots/Mission_Failed.png)
 
 </details>
+
+---
+
+## 🎥 Game Demonstration Protocol
+
+As part of the academic requirements (Progress Report #3 & Final Output), a **5-minute live game demonstration** is required. This demo must visually confirm all implemented architectures and align with the approved Ideaboard concepts.
+
+### Demonstration Checklist
+When presenting the live game demo, ensure the following systems are clearly highlighted:
+
+1. **Core Gameplay & Maneuverability:** Show the fluidity of the player chassis, aiming mechanisms, and stamina-based abilities (Dash, Shield, Overdrive).
+2. **UI/UX Design Integration:** Walk through the clean, terminal-inspired interface. Demonstrate the **Main Menu**, **Hangar Fleet selection**, **Database Codex**, and the tactical HUD overlay during combat.
+3. **CPU Algorithm Integration (Primary Academic Requirement):**
+    * Engage a large swarm of enemies.
+    * Cycle between **FCFS (Patrol Mode)** and **RR (Focus Mode)** / **HRRN (Adaptive Mode)** using the `Q` tracker key.
+    * Verbally observe and explain how the companion drone shift their targeting logic and prioritize different enemies in real-time based on the selected OS algorithm.
+    * Make use of the **Tactical Pause** (Spacebar/P) to open the **Target Queue** window to show the algorithmic wait times and calculations live.
+4. **Progression & Upgrades:** Complete a wave or reach system failure to demonstrate the **Mission Report**, credit translation, and the application of points in the **Hangar Upgrades** bay.
+5. **Autopilot (AI Tester):** If a hands-off mechanical explanation is needed during the presentation, press `Y` to activate the AI Tester. This allows the presenter to focus entirely on explaining the CPU scheduling logic without actively surviving the bullet hell.
 
 ---
 

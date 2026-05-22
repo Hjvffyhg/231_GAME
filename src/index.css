@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -10,22 +10,35 @@
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
   overflow: hidden;
   height: 100%;
-  background-color: #0A0F1F; /* Deep space Midnight Blue from PR1 */
+  background-color: #0a0f1f; /* Deep space Midnight Blue from PR1 */
 }
 
 body {
@@ -33,7 +46,9 @@ body {
 }
 
 /* Keep pixelated rendering */
-img, .pixelated, .pixelated-ship {
+img,
+.pixelated,
+.pixelated-ship {
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-crisp-edges;
   image-rendering: pixelated;
@@ -45,7 +60,7 @@ img, .pixelated, .pixelated-ship {
   height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
@@ -53,5 +68,5 @@ img, .pixelated, .pixelated-ship {
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 182, 212, 0.8); 
+  background: rgba(6, 182, 212, 0.8);
 }

@@ -256,9 +256,7 @@ export default function App() {
                             </p>
                             <div className="inline-block text-left mb-8">
                               <ul className="list-disc pl-5 space-y-2 text-sm text-slate-400 font-mono">
-                                <li>
-                                  SYSTEM FAILURE DETECTED.
-                                </li>
+                                <li>SYSTEM FAILURE DETECTED.</li>
                                 <li className="text-[#00D9FF]">
                                   MISSION REPORT SAVED.
                                 </li>
@@ -340,7 +338,9 @@ export default function App() {
                               )}
                             >
                               <RefreshCw className="w-5 h-5" />{" "}
-                              {isVictory ? "NEXT DEPLOYMENT" : "RESTART MISSION"}
+                              {isVictory
+                                ? "NEXT DEPLOYMENT"
+                                : "RESTART MISSION"}
                             </span>
                           </button>
 

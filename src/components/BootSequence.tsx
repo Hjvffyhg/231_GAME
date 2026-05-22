@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { soundManager } from '../lib/audio';
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { soundManager } from "../lib/audio";
 
 const BOOT_SEQUENCE = [
   { text: "INITIALIZING SYSTEM...", delay: 200 },
@@ -17,17 +17,20 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     // We could play a startup sound here if available
     let timeouts: NodeJS.Timeout[] = [];
-    
+
     BOOT_SEQUENCE.forEach(({ text, delay }) => {
       const t = setTimeout(() => {
-        setLines(prev => [...prev, text]);
+        setLines((prev) => [...prev, text]);
       }, delay);
       timeouts.push(t);
     });
 
-    const completion = setTimeout(() => {
-      onComplete();
-    }, BOOT_SEQUENCE[BOOT_SEQUENCE.length - 1].delay + 1000);
+    const completion = setTimeout(
+      () => {
+        onComplete();
+      },
+      BOOT_SEQUENCE[BOOT_SEQUENCE.length - 1].delay + 1000,
+    );
     timeouts.push(completion);
 
     return () => {
@@ -49,7 +52,7 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
           </motion.div>
         ))}
       </AnimatePresence>
-      
+
       {/* Blinking cursor */}
       <motion.div
         animate={{ opacity: [1, 0, 1] }}

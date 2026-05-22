@@ -1,4 +1,11 @@
-export type HudElementId = 'moveJoystick' | 'aimJoystick' | 'wpnBtn' | 'shdBtn' | 'dshBtn' | 'hpBar' | 'ocBtn';
+export type HudElementId =
+  | "moveJoystick"
+  | "aimJoystick"
+  | "wpnBtn"
+  | "shdBtn"
+  | "dshBtn"
+  | "hpBar"
+  | "ocBtn";
 
 export interface HudElementState {
   x: number; // percentage (0-100)
@@ -20,7 +27,7 @@ export const DEFAULT_LAYOUT: HudLayout = {
 };
 
 export function getSavedLayout(): HudLayout {
-  const saved = localStorage.getItem('hudLayout');
+  const saved = localStorage.getItem("hudLayout");
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -31,5 +38,5 @@ export function getSavedLayout(): HudLayout {
 }
 
 export function saveLayout(layout: HudLayout) {
-  localStorage.setItem('hudLayout', JSON.stringify(layout));
+  localStorage.setItem("hudLayout", JSON.stringify(layout));
 }
