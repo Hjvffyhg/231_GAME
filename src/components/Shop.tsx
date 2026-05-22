@@ -1,33 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Shield, Zap, Wind, Lock } from 'lucide-react';
+import { ArrowLeft, Shield, Zap, Wind, Hexagon } from 'lucide-react';
 import { ShipName } from '../lib/voidFleet';
 import { soundManager } from '../lib/audio';
 
 const SHIPS: { id: ShipName; name: string; cost: number; desc: string; stats: { hp: number, speed: string, type: string } }[] = [
-  { id: 'Fighter', name: 'Fighter', cost: 0, desc: 'Standard issue all-rounder.', stats: { hp: 100, speed: 'Normal', type: 'Balanced' } },
-  { id: 'Scout', name: 'Scout', cost: 2000, desc: 'High speed, fragile hull. Hit and run tactics.', stats: { hp: 70, speed: 'Very Fast', type: 'Agility' } },
-  { id: 'Bomber', name: 'Bomber', cost: 5000, desc: 'Heavy armor, low speed. Payload specialist.', stats: { hp: 180, speed: 'Slow', type: 'Tank' } },
-  { id: 'Frigate', name: 'Frigate', cost: 12000, desc: 'Advanced military vessel. Superior shields.', stats: { hp: 250, speed: 'Normal', type: 'Balanced' } },
-  { id: 'Battlecruiser', name: 'Battlecruiser', cost: 30000, desc: 'Massive capital ship. Slow but devastating.', stats: { hp: 400, speed: 'Very Slow', type: 'Juggernaut' } },
+  { id: 'Fighter', name: 'Fighter', cost: 0, desc: 'Standard issue all-rounder. Balanced blend of mobility and firepower. Reliable in dogfights.', stats: { hp: 100, speed: 'Normal', type: 'Balanced' } },
+  { id: 'Scout', name: 'Scout', cost: 2000, desc: 'High speed, fragile hull. Excels at hit and run tactics. Perfect for intercepting fast targets.', stats: { hp: 70, speed: 'Very Fast', type: 'Agility' } },
+  { id: 'Bomber', name: 'Bomber', cost: 5000, desc: 'Heavy armor, low speed. Payload specialist designed to punch through dense asteroid fields.', stats: { hp: 180, speed: 'Slow', type: 'Tank' } },
+  { id: 'Frigate', name: 'Frigate', cost: 12000, desc: 'Advanced military vessel. Superior shields and sustained firing capabilities make it a formidable unit.', stats: { hp: 250, speed: 'Normal', type: 'Balanced' } },
+  { id: 'Battlecruiser', name: 'Battlecruiser', cost: 30000, desc: 'Massive capital ship. Slow but devastating. Equipped to obliterate anything caught in its primary fire.', stats: { hp: 400, speed: 'Very Slow', type: 'Juggernaut' } },
 ];
 
 const UPGRADES = [
-  { id: 'hp', name: 'Hull Reinforcement', icon: Shield, desc: '+20 Max HP per level', maxLevel: 10, baseCost: 500, costMult: 1.5, color: 'cyan' },
-  { id: 'dmg', name: 'Weapon Overclock', icon: Zap, desc: '+20% Damage per level', maxLevel: 10, baseCost: 1000, costMult: 1.8, color: 'rose' },
-  { id: 'speed', name: 'Advanced Thrusters', icon: Wind, desc: '+10% Speed per level', maxLevel: 5, baseCost: 800, costMult: 1.4, color: 'indigo' },
+  { id: 'hp', name: 'Hull Reinforcement', icon: Shield, desc: 'Reinforces the outer chassis of all fleet ships, increasing maximum survivability against deep space hazards and enemy fire.', maxLevel: 10, baseCost: 500, costMult: 1.5 },
+  { id: 'dmg', name: 'Weapon Overdrive', icon: Zap, desc: 'Overclocks the plasma coils in primary weapon systems, yielding a substantial increase in destructive output.', maxLevel: 10, baseCost: 1000, costMult: 1.8 },
+  { id: 'speed', name: 'Advanced Thrusters', icon: Wind, desc: 'Upgrades the main propulsion engine blocks across all ship classes, increasing base maneuvering speed.', maxLevel: 5, baseCost: 800, costMult: 1.4 },
 ];
+
+type Selection = { type: 'ship', id: ShipName } | { type: 'upgrade', id: string };
 
 export function ShopScreen({ onBack }: { onBack: () => void }) {
   const [credits, setCredits] = useState(0);
   const [unlocked, setUnlocked] = useState<string[]>(['Fighter']);
   const [selected, setSelected] = useState<ShipName>('Fighter');
   const [upgrades, setUpgrades] = useState<Record<string, number>>({ hp: 0, dmg: 0, speed: 0 });
+  const [selection, setSelection] = useState<Selection>({ type: 'ship', id: 'Fighter' });
 
   useEffect(() => {
     setCredits(parseInt(localStorage.getItem('credits') || '0', 10));
-    setUnlocked(JSON.parse(localStorage.getItem('unlockedShips') || '["Fighter"]'));
-    setSelected((localStorage.getItem('selectedShip') as ShipName) || 'Fighter');
+    const loadedUnlocked = JSON.parse(localStorage.getItem('unlockedShips') || '["Fighter"]');
+    setUnlocked(loadedUnlocked);
+    const loadedSelected = (localStorage.getItem('selectedShip') as ShipName) || 'Fighter';
+    setSelected(loadedSelected);
     setUpgrades(JSON.parse(localStorage.getItem('upgrades') || '{"hp":0,"dmg":0,"speed":0}'));
+    setSelection({ type: 'ship', id: loadedSelected });
   }, []);
 
   const saveState = (c: number, u: string[], s: ShipName, up: Record<string, number>) => {
@@ -67,186 +73,267 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
     }
   };
 
-  return (
-    <div className="absolute inset-0 w-full h-full bg-[#0A0F1F] overflow-hidden flex flex-col font-sans">
-      {/* Background Grid */}
-      <div className="absolute inset-0 pointer-events-none opacity-10 bg-[linear-gradient(rgba(6,182,212,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.2)_1px,transparent_1px)] bg-[size:40px_40px] z-0"></div>
-      <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,_transparent_0%,_#0A0F1F_100%)] z-0"></div>
+  const UPGRADES_ENHANCED = UPGRADES.map(u => ({
+    ...u,
+    bonusFn: (lvl: number) => {
+      if (u.id === 'hp') return `+${lvl * 20} Max HP`;
+      if (u.id === 'dmg') return `+${lvl * 20}% Damage`;
+      if (u.id === 'speed') return `+${lvl * 10}% Speed`;
+      return '';
+    }
+  }));
 
-      {/* Header Area */}
-      <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end p-6 md:p-8 md:pt-12 border-b border-cyan-900/50 bg-slate-950/80 backdrop-blur-md shadow-[0_10px_30px_rgba(6,182,212,0.05)]">
+  const displayShipId = selection.type === 'ship' ? selection.id : selected;
+  const displayShip = SHIPS.find(s => s.id === displayShipId)!;
+
+  return (
+    <div className="absolute inset-0 w-full h-full bg-[#0A0F1F] text-[#ffffff] font-sans flex flex-col p-5 md:p-10 select-none overflow-hidden pb-0"
+         style={{
+           backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)',
+           backgroundSize: '40px 40px'
+         }}>
+      
+      {/* Container to restrict max width like the mock */}
+      <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto">
         
-        <div className="flex flex-col gap-4">
+        {/* HEADER */}
+        <header className="flex justify-between items-center mb-[30px] shrink-0">
           <button 
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-cyan-900/50 hover:border-cyan-500 text-cyan-500 hover:text-cyan-300 transition-all font-mono text-xs tracking-widest uppercase w-max"
-            style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}
+            className="bg-transparent border border-[#1e2645] text-[#00D9FF] px-4 py-2 rounded font-semibold text-sm cursor-pointer flex items-center gap-2 uppercase tracking-[1px] transition-all duration-200 hover:bg-[#00D9FF]/10"
           >
-            <ArrowLeft size={14} /> Exit Hangar
+            <span>&larr;</span> MAIN MENU
           </button>
           
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-cyan-500 animate-pulse"></div>
-              <h1 className="text-3xl md:text-5xl font-black text-white tracking-[0.2em] uppercase font-mono drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">
-                PROTOTYPE HANGAR
-              </h1>
+          <div className="text-right flex flex-col items-end">
+            <div className="text-[#EF4444] text-[11px] tracking-[1.5px] uppercase">UPGRADE POINTS AVAILABLE</div>
+            <div className="text-[28px] font-bold flex items-baseline gap-2">
+              {credits.toLocaleString()} <span className="text-[#EF4444] text-sm font-semibold">CREDITS</span>
             </div>
-            <p className="text-cyan-500/70 font-mono text-sm tracking-widest mt-1 ml-6">EARTH DEFENSE INITIATIVE // ENGINEERING BAY</p>
           </div>
-        </div>
+        </header>
 
-        {/* Currency Databank */}
-        <div className="mt-6 md:mt-0 bg-slate-900/80 px-6 py-3 border border-amber-500/30 w-full md:w-auto flex flex-col items-start md:items-end relative overflow-hidden" style={{ clipPath: 'polygon(5% 0, 100% 0, 100% 100%, 0 100%)' }}>
-          <div className="absolute top-0 right-0 w-8 h-8 bg-amber-500/10" style={{ clipPath: 'polygon(100% 0, 0 0, 100% 100%)' }}></div>
-          <div className="text-[10px] text-amber-500 font-bold tracking-[0.3em] uppercase mb-1">Available Resources</div>
-          <div className="text-2xl md:text-3xl font-mono font-bold text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
-            {credits.toLocaleString()} <span className="text-sm text-amber-500/70">CTR</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 md:p-8 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-        
-        {/* SHIPS PANEL */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 border-b border-cyan-900/50 pb-2">
-            <span className="text-xs font-mono font-bold text-cyan-500 tracking-widest uppercase">Select Chassis</span>
-          </div>
+        {/* MAIN CONTENT GRID */}
+        <main className="grid grid-cols-[280px_1fr_450px] gap-10 flex-grow h-full overflow-hidden pb-10">
           
-          {SHIPS.map(ship => {
-            const isUnlocked = unlocked.includes(ship.id);
-            const isSelected = selected === ship.id;
+          {/* LEFT SIDEBAR (Lists) */}
+          <aside className="flex flex-col gap-[30px] overflow-y-auto pr-2 custom-scrollbar">
             
-            return (
-              <div 
-                key={ship.id}
-                className={`relative p-5 transition-all duration-300 backdrop-blur-md ${isSelected ? 'bg-cyan-950/30 border border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]' : isUnlocked ? 'bg-slate-900/60 border border-slate-700 hover:border-cyan-500/50' : 'bg-slate-950/80 border border-slate-800 opacity-80'}`}
-                style={{ clipPath: 'polygon(0 0, 97% 0, 100% 10%, 100% 100%, 3% 100%, 0 90%)' }}
-              >
-                {/* Decorative Tech Elements */}
-                {isSelected && <div className="absolute top-0 left-0 w-1 h-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]"></div>}
-                <div className="absolute top-2 right-2 text-[8px] font-mono text-slate-600 tracking-widest">ID:{ship.id.toUpperCase()}</div>
+            <div className="flex flex-col">
+              <h3 className="text-sm text-white tracking-[2px] uppercase mb-3">HANGAR FLEET</h3>
+              {SHIPS.map(ship => {
+                const isUnlocked = unlocked.includes(ship.id);
+                const isSelectedForGame = selected === ship.id;
+                const isHighlight = selection.type === 'ship' && selection.id === ship.id;
 
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className={`text-xl font-mono font-bold flex items-center gap-3 tracking-widest uppercase ${isSelected ? 'text-white' : 'text-slate-300'}`}>
-                    {ship.name}
-                    {!isUnlocked && <Lock size={14} className="text-rose-500" />}
-                    {isSelected && <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 px-2 py-0.5 tracking-widest uppercase">Active</span>}
-                  </h3>
-                  {!isUnlocked && (
-                    <div className="font-mono text-rose-400 font-bold text-sm tracking-widest">{ship.cost.toLocaleString()} CTR</div>
-                  )}
-                </div>
-                
-                <p className="text-slate-400 text-xs font-mono mb-4 border-l-2 border-slate-700 pl-3">{ship.desc}</p>
-                
-                <div className="grid grid-cols-3 gap-3 mb-5 text-[10px] font-mono tracking-widest uppercase">
-                  <div className="bg-slate-950/50 p-2 border border-slate-800/50">
-                    <span className="text-slate-500 block mb-1">Base HP</span>
-                    <span className="text-cyan-400 text-sm font-bold">{ship.stats.hp}</span>
-                  </div>
-                  <div className="bg-slate-950/50 p-2 border border-slate-800/50">
-                    <span className="text-slate-500 block mb-1">Speed</span>
-                    <span className="text-amber-400 text-sm font-bold">{ship.stats.speed}</span>
-                  </div>
-                  <div className="bg-slate-950/50 p-2 border border-slate-800/50">
-                    <span className="text-slate-500 block mb-1">Class</span>
-                    <span className="text-rose-400 text-sm font-bold">{ship.stats.type}</span>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => handleBuyShip(ship)}
-                  disabled={isSelected}
-                  className={`w-full py-2.5 font-mono font-bold text-xs tracking-[0.2em] transition-all uppercase flex items-center justify-center gap-2 ${
-                    isSelected ? 'bg-cyan-900/20 text-cyan-500/50 border border-cyan-900/30 cursor-default' 
-                    : isUnlocked ? 'bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-slate-950 border border-cyan-500' 
-                    : credits >= ship.cost ? 'bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500' 
-                    : 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed'
-                  }`}
-                  style={{ clipPath: 'polygon(2% 0, 98% 0, 100% 50%, 98% 100%, 2% 100%, 0% 50%)' }}
-                >
-                  {isSelected ? 'Weapon Installed' : isUnlocked ? 'Equip Weapon' : 'Authorize Build'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* UPGRADES PANEL */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 border-b border-rose-900/50 pb-2 mt-6 lg:mt-0">
-            <span className="text-xs font-mono font-bold text-rose-500 tracking-widest uppercase">Tactical Overrides</span>
-          </div>
-
-          {UPGRADES.map(upg => {
-            const currentLvl = upgrades[upg.id] || 0;
-            const isMax = currentLvl >= upg.maxLevel;
-            const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, currentLvl));
-            const canAfford = credits >= cost && !isMax;
-            const Icon = upg.icon;
-            
-            // Color mapping
-            const themeColors = {
-                cyan: { text: 'text-[#00D9FF]', border: 'border-[#00D9FF]/30', bg: 'bg-[#00D9FF]', glow: 'shadow-[0_0_10px_rgba(0,217,255,0.5)]' },
-                rose: { text: 'text-[#EF4444]', border: 'border-[#EF4444]/30', bg: 'bg-[#EF4444]', glow: 'shadow-[0_0_10px_rgba(239,68,68,0.5)]' },
-                indigo: { text: 'text-[#6366F1]', border: 'border-[#6366F1]/30', bg: 'bg-[#6366F1]', glow: 'shadow-[0_0_10px_rgba(99,102,241,0.5)]' }
-            };
-            const theme = themeColors[upg.color as keyof typeof themeColors] || themeColors.cyan;
-
-            return (
-              <div key={upg.id} className="relative p-5 bg-slate-900/60 border border-slate-700/50 backdrop-blur-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 95% 100%, 0 100%)' }}>
-                <div className="flex items-start gap-4 mb-5">
-                  <div className={`p-3 bg-slate-950 border ${theme.border} flex items-center justify-center`} style={{ clipPath: 'polygon(20% 0, 80% 0, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0 80%, 0 20%)' }}>
-                    <Icon size={20} className={theme.text} />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-mono font-bold text-white tracking-widest uppercase">{upg.name}</h3>
-                    <p className="text-slate-400 text-xs font-mono">{upg.desc}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-end">
-                    <span className="text-[10px] text-slate-500 font-mono font-bold tracking-widest uppercase">Integration Level</span>
-                    <span className={`text-xs font-mono font-bold ${theme.text}`}>LVL {currentLvl} / {upg.maxLevel}</span>
-                  </div>
-                  
-                  {/* High-Tech Progress Bar */}
-                  <div className="flex gap-1 bg-slate-950 p-1 border border-slate-800/50">
-                    {Array.from({ length: upg.maxLevel }).map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`flex-1 h-2 transition-all ${i < currentLvl ? `${theme.bg} ${theme.glow}` : 'bg-slate-800'}`} 
-                        style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  <button
-                    onClick={() => handleBuyUpgrade(upg)}
-                    disabled={!canAfford || isMax}
-                    className={`w-full py-3 font-mono font-bold text-xs tracking-widest uppercase transition-all flex justify-between items-center px-4 ${
-                      isMax ? 'bg-slate-950/50 text-slate-600 border border-slate-800 cursor-default' 
-                      : canAfford ? `bg-slate-800 hover:${theme.bg} text-white border ${theme.border} hover:border-transparent ${theme.glow}` 
-                      : 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed'
+                return (
+                  <div
+                    key={ship.id}
+                    onClick={() => setSelection({ type: 'ship', id: ship.id })}
+                    className={`flex items-center bg-[#0d1428] border rounded-md p-3 mb-2 cursor-pointer transition-all duration-200 ${
+                      isHighlight ? 'border-l-4 border-l-[#EF4444] border-[#EF4444]/30 bg-[#EF4444]/5' : 'border-[#1e2645] hover:bg-[#18213b]'
                     }`}
-                    style={{ clipPath: 'polygon(0 0, 95% 0, 100% 50%, 95% 100%, 0 100%)' }}
                   >
-                    <span>{isMax ? 'MODIFICATION MAXED' : 'Authorize Refit'}</span>
-                    {!isMax && <span className={canAfford ? 'text-amber-400' : 'text-rose-900'}>{cost.toLocaleString()} CTR</span>}
-                  </button>
+                    <div className={`w-8 h-8 rounded shrink-0 flex justify-center items-center mr-3 border ${isHighlight ? 'border-[#EF4444] text-[#EF4444]' : 'border-white/10 bg-white/5 text-white/80'}`}>
+                       <Hexagon size={16} />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <h4 className="textbase font-semibold leading-tight mb-0.5">{ship.name}</h4>
+                      <p className={`text-[11px] uppercase tracking-[0.5px] ${isHighlight ? 'text-[#00D9FF]' : 'text-[#94a3b8]'}`}>
+                         {!isUnlocked ? `▤ ${ship.cost.toLocaleString()}` : isSelectedForGame ? 'ACTIVE' : 'OWNED'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col">
+              <h3 className="text-sm text-white tracking-[2px] uppercase mb-3">SYSTEM UPGRADES</h3>
+              {UPGRADES_ENHANCED.map(upg => {
+                const isHighlight = selection.type === 'upgrade' && selection.id === upg.id;
+                const currentLvl = upgrades[upg.id] || 0;
+
+                return (
+                  <div
+                    key={upg.id}
+                    onClick={() => setSelection({ type: 'upgrade', id: upg.id })}
+                    className={`flex items-center bg-[#0d1428] border rounded-md p-3 mb-2 cursor-pointer transition-all duration-200 ${
+                      isHighlight ? 'border-l-4 border-l-[#EF4444] border-[#EF4444]/30 bg-[#EF4444]/5' : 'border-[#1e2645] hover:bg-[#18213b]'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded shrink-0 flex justify-center items-center mr-3 border ${isHighlight ? 'border-[#EF4444] text-[#EF4444]' : 'border-white/10 bg-white/5 text-white/80'}`}>
+                       <upg.icon size={16} />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <h4 className="textbase font-semibold leading-tight mb-0.5">{upg.name}</h4>
+                      <p className={`text-[11px] uppercase tracking-[0.5px] ${isHighlight ? 'text-[#00D9FF]' : 'text-[#94a3b8]'}`}>
+                         LVL {currentLvl} / {upg.maxLevel}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+          </aside>
+
+          {/* CENTER DETAILS PANEL */}
+          <section className="bg-[#0d1428] border border-[#1e2645] rounded-xl p-[30px] flex flex-col relative h-full shrink-0">
+             {selection.type === 'ship' ? (
+                (() => {
+                  const ship = SHIPS.find(s => s.id === selection.id)!;
+                  const isUnlocked = unlocked.includes(ship.id);
+                  const isSelectedForGame = selected === ship.id;
+                  
+                  return (
+                    <>
+                      <div className="flex items-center gap-[15px] mb-5">
+                          <h1 className="text-[32px] tracking-[4px] uppercase whitespace-nowrap">{ship.name}</h1>
+                          <span className="border border-[#1e2645] py-1 px-2.5 rounded-[20px] text-[11px] text-[#6366F1] uppercase tracking-[1px]">CHASSIS</span>
+                      </div>
+                      
+                      <p className="text-[#94a3b8] text-[14px] leading-[1.6] mb-10 max-w-[90%]">
+                        {ship.desc}
+                      </p>
+
+                      <div className="text-[12px] text-[#94a3b8] tracking-[2px] uppercase mb-[15px] border-b border-[#1e2645] pb-2">
+                          BASE SPECIFICATION SPECS
+                      </div>
+
+                      <div className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-md mb-2.5">
+                          <span className="text-[13px] text-[#94a3b8] uppercase tracking-[1px]">HULL INTEGRITY</span>
+                          <span className="text-[18px] font-bold">{ship.stats.hp}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-md mb-2.5">
+                          <span className="text-[13px] text-[#94a3b8] uppercase tracking-[1px]">SPEED CLASS</span>
+                          <span className="text-[18px] font-bold">{ship.stats.speed}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-md mb-2.5">
+                          <span className="text-[13px] text-[#94a3b8] uppercase tracking-[1px]">COMBAT ROLE</span>
+                          <span className="text-[18px] font-bold">{ship.stats.type}</span>
+                      </div>
+
+                      <button
+                        onClick={() => handleBuyShip(ship)}
+                        disabled={isSelectedForGame}
+                        className={`mt-auto bg-transparent border p-4 rounded-md font-sans text-[16px] font-semibold tracking-[2px] uppercase cursor-pointer transition-all duration-300 ${
+                          isSelectedForGame ? 'border-[#00D9FF] text-[#00D9FF] bg-[#00D9FF]/10 shadow-[0_0_15px_rgba(0,208,255,0.2)]'
+                          : isUnlocked ? 'border-[#00D9FF]/30 text-[#00D9FF] hover:bg-[#00D9FF]/10 hover:border-[#00D9FF] hover:shadow-[0_0_15px_rgba(0,208,255,0.2)]'
+                          : credits >= ship.cost ? 'border-[#EF4444]/30 text-[#EF4444] hover:bg-[#EF4444]/10 hover:border-[#EF4444] hover:shadow-[0_0_15px_rgba(255,145,0,0.2)]'
+                          : 'border-[#1e2645] text-[#94a3b8] cursor-not-allowed'
+                        }`}
+                      >
+                         {isSelectedForGame ? 'SYSTEM ACTIVE' : isUnlocked ? 'ENGAGE CHASSIS' : `AUTHORIZE BUILD - ${ship.cost}`}
+                      </button>
+                    </>
+                  );
+                })()
+             ) : (
+                (() => {
+                  const upg = UPGRADES_ENHANCED.find(u => u.id === selection.id)!;
+                  const currentLvl = upgrades[upg.id] || 0;
+                  const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, currentLvl));
+                  const isMax = currentLvl >= upg.maxLevel;
+                  const canAfford = credits >= cost && !isMax;
+
+                  return (
+                    <>
+                      <div className="flex items-center gap-[15px] mb-5">
+                          <h1 className="text-[32px] tracking-[4px] uppercase whitespace-nowrap">{upg.name}</h1>
+                          <span className="border border-[#1e2645] py-1 px-2.5 rounded-[20px] text-[11px] text-[#EF4444] uppercase tracking-[1px]">UPGRADE</span>
+                      </div>
+                      
+                      <p className="text-[#94a3b8] text-[14px] leading-[1.6] mb-10 max-w-[90%]">
+                        {upg.desc}
+                      </p>
+
+                      <div className="text-[12px] text-[#94a3b8] tracking-[2px] uppercase mb-[15px] border-b border-[#1e2645] pb-2">
+                          ENHANCEMENT OUTPUT
+                      </div>
+
+                      <div className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-md mb-2.5">
+                          <span className="text-[13px] text-[#94a3b8] uppercase tracking-[1px]">CURRENT MODULE</span>
+                          <span className="text-[18px] font-bold">{currentLvl > 0 ? upg.bonusFn(currentLvl) : 'System Offline'}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-md mb-2.5">
+                          <span className="text-[13px] text-[#94a3b8] uppercase tracking-[1px]">NEXT MODULE</span>
+                          <span className="text-[18px] font-bold">{!isMax ? upg.bonusFn(currentLvl + 1) : 'MAXIMUM CAPACITY REACHED'}</span>
+                      </div>
+
+                      <button
+                        onClick={() => handleBuyUpgrade(upg)}
+                        disabled={!canAfford || isMax}
+                        className={`mt-auto bg-transparent border p-4 rounded-md font-sans text-[16px] font-semibold tracking-[2px] uppercase cursor-pointer transition-all duration-300 ${
+                          isMax ? 'border-[#1e2645] text-[#94a3b8] cursor-not-allowed bg-[#18213b]/50'
+                          : canAfford ? 'border-[#EF4444]/30 text-[#EF4444] hover:bg-[#EF4444]/10 hover:border-[#EF4444] hover:shadow-[0_0_15px_rgba(255,145,0,0.2)]'
+                          : 'border-[#1e2645] text-[#94a3b8] cursor-not-allowed'
+                        }`}
+                      >
+                         {isMax ? 'MODIFICATION MAXED' : `AUTHORIZE REFIT - ${cost}`}
+                      </button>
+                    </>
+                  );
+                })()
+             )}
+          </section>
+
+          {/* RIGHT VISUAL PANEL */}
+          <section className="flex flex-col justify-between shrink-0">
+             
+             {/* Hologram Stage */}
+             <div className="flex-grow flex justify-center items-center relative mb-6">
+                <div className="absolute w-[450px] h-[450px] rounded-full z-10 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%)' }}></div>
+                <div className="z-20 w-[400px] h-[400px] flex items-center justify-center filter drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                   <img 
+                      src={`/VoidFleetPack/${displayShip.name}/Base.png`} 
+                      alt={displayShip.name}
+                      className="max-w-[400px] max-h-[400px] w-full h-full object-contain scale-110"
+                      style={{ imageRendering: 'pixelated' }}
+                   />
                 </div>
-              </div>
-            );
-          })}
-        </div>
+             </div>
+
+             {/* Stat Card Overlay */}
+             <div className="bg-[#0d1428] border border-[#1e2645] rounded-xl p-[25px] relative">
+                {/* Decorative neon line */}
+                <div className="absolute left-[-1px] top-[20px] bottom-[20px] w-[3px] bg-[#6366F1] rounded-[3px] shadow-[0_0_10px_#6366F1]"></div>
+                
+                <div className="flex justify-between items-center mb-[20px]">
+                    <h2 className="text-[20px] tracking-[2px] uppercase m-0 leading-none">{displayShip.name}</h2>
+                    {displayShip.id === selected && <span className="bg-[#00D9FF]/10 border border-[#00D9FF] text-[#00D9FF] px-2.5 py-1 rounded-[4px] text-[10px] font-bold tracking-[1px]">ACTIVE CHASSIS</span>}
+                </div>
+
+                <div className="mb-[15px]">
+                    <div className="flex justify-between mb-2 text-[11px] font-semibold text-[#94a3b8] tracking-[1px] uppercase">
+                        <span>HULL INTEGRITY</span>
+                        <span className="text-white">{displayShip.stats.hp}</span>
+                    </div>
+                    <div className="w-full h-[6px] bg-[#060a14] rounded-[3px] overflow-hidden">
+                        <div className="h-full bg-[#EF4444] rounded-[3px] transition-all" style={{ width: `${Math.min(100, (displayShip.stats.hp / 400) * 100)}%` }}></div>
+                    </div>
+                </div>
+
+                <div className="mb-0">
+                    <div className="flex justify-between mb-2 text-[11px] font-semibold text-[#94a3b8] tracking-[1px] uppercase">
+                        <span>ENGINE OUTPUT</span>
+                        <span className="text-white">{displayShip.stats.speed}</span>
+                    </div>
+                    <div className="w-full h-[6px] bg-[#060a14] rounded-[3px] overflow-hidden">
+                        <div className="h-full bg-[#EF4444] rounded-[3px] transition-all" style={{ width: displayShip.stats.speed === 'Very Fast' ? '100%' : displayShip.stats.speed === 'Fast' ? '80%' : displayShip.stats.speed === 'Normal' ? '60%' : displayShip.stats.speed === 'Slow' ? '40%' : '20%' }}></div>
+                    </div>
+                </div>
+
+             </div>
+          </section>
+
+        </main>
 
       </div>
     </div>
   );
 }
+

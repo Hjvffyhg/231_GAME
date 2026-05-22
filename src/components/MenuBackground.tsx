@@ -17,7 +17,7 @@ export function MenuBackground() {
   }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-slate-950">
+    <div className="absolute inset-0 overflow-hidden bg-[#0A0F1F]">
       <style>{`
         @keyframes subtlePan {
           0% { transform: scale(1.05) translate(0%, 0%) rotate(0deg); }

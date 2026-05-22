@@ -29,10 +29,10 @@ const MenuButton = ({
       aria-label={title}
     >
       {/* Glassmorphism Background */}
-      <div className="absolute inset-0 bg-cyan-950/30 border border-cyan-500/30 backdrop-blur-sm transition-all group-hover:bg-cyan-900/50 group-hover:border-cyan-400"></div>
+      <div className="absolute inset-0 bg-[#00D9FF]/10 border border-[#00D9FF]/30 backdrop-blur-sm transition-all group-hover:bg-[#00D9FF]/20 group-hover:border-[#00D9FF]"></div>
       
       {/* Glowing left edge indicator on hover */}
-      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-400 shadow-[0_0_15px_#22d3ee] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#00D9FF] shadow-[0_0_15px_#00D9FF] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       
       {/* Scanline overlay effect */}
       <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20"></div>
@@ -44,7 +44,7 @@ const MenuButton = ({
 
       {locked && (
          <div className="absolute right-4 z-10 flex items-center justify-center">
-           <span className="text-xs font-mono text-red-400 tracking-widest px-2 py-1 bg-red-950/80 border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+           <span className="text-xs font-mono text-[#EF4444] tracking-widest px-2 py-1 bg-[#EF4444]/20 border border-[#EF4444]/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
              LOCKED
            </span>
          </div>
@@ -75,7 +75,7 @@ export function MainMenu({ onStartGame, onShowReport, onShowModes, onShowShop, o
   }, []);
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-slate-950 overflow-hidden">
+    <div className="absolute inset-0 w-full h-full bg-[#0A0F1F] overflow-hidden">
       
       {/* Background Image Container */}
       <div 
@@ -97,13 +97,13 @@ export function MainMenu({ onStartGame, onShowReport, onShowModes, onShowShop, o
         >
           {/* Game Title Area */}
         <div className="mt-2 sm:mt-4 md:mt-8 lg:mt-12 max-w-2xl shrink-0">
-          <h2 className="text-cyan-500 font-mono tracking-[0.2em] md:tracking-[0.3em] text-[10px] sm:text-xs md:text-base font-bold mb-1 sm:mb-2 uppercase drop-shadow-md">
+          <h2 className="text-[#00D9FF] font-mono tracking-[0.2em] md:tracking-[0.3em] text-[10px] sm:text-xs md:text-base font-bold mb-1 sm:mb-2 uppercase drop-shadow-md">
             Earth Defense Initiative
           </h2>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-mono font-black text-white tracking-widest uppercase drop-shadow-[0_0_20px_rgba(6,182,212,0.5)] leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-mono font-black text-white tracking-widest uppercase drop-shadow-[0_0_20px_rgba(0,217,255,0.5)] leading-tight">
             Space
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00D9FF] to-[#6366F1]">
               Survival
             </span>
           </h1>
@@ -129,12 +129,12 @@ export function MainMenu({ onStartGame, onShowReport, onShowModes, onShowShop, o
 
           <MenuButton 
             onClick={onShowCodex}
-            title="STORY / LORE"
+            title="DATABASE"
           />
 
           <MenuButton 
             onClick={onShowReport} 
-            title="ENEMY INFO"
+            title="MISSION REPORT"
           />
 
         </div>

@@ -31,7 +31,7 @@ const ASSETS_CACHE: {
 
 interface GameCanvasProps {
   gameKey: number;
-  onGameOver: (score: number, isVictory?: boolean) => void;
+  onGameOver: (score: number, isVictory?: boolean, cause?: string) => void;
   onReturnMenu: () => void;
   civilizationLevel?: number;
 }
@@ -71,6 +71,8 @@ export function GameCanvas({
   const shdSkillRef = useRef<HTMLDivElement>(null);
   const ocSkillRef = useRef<HTMLDivElement>(null);
   const bossWarningUIRef = useRef<HTMLDivElement>(null);
+  const bossWarningSubtextRef = useRef<HTMLDivElement>(null);
+  const osMessagesRef = useRef<HTMLDivElement>(null);
 
   const onGameOverRef = useRef(onGameOver);
   const onReturnMenuRef = useRef(onReturnMenu);
@@ -82,29 +84,55 @@ export function GameCanvas({
   const [isHudEditorOpen, setIsHudEditorOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hudLayout, setHudLayout] = useState<HudLayout>(getSavedLayout());
-  const [droneRange, setDroneRange] = useState(1000);
-  const [cameraMode, setCameraMode] = useState<'offset' | 'center' | 'dynamic'>(() => (localStorage.getItem('ss-camera-mode') as any) || 'offset');
+  const [droneRange, setDroneRange] = useState(
+    () => Number(localStorage.getItem("ss-drone-range")) || 1000,
+  );
+  const [cameraMode, setCameraMode] = useState<"offset" | "center" | "dynamic">(
+    () => (localStorage.getItem("ss-camera-mode") as any) || "offset",
+  );
   const cameraModeRef = useRef(cameraMode);
-  
+
   useEffect(() => {
     cameraModeRef.current = cameraMode;
-    localStorage.setItem('ss-camera-mode', cameraMode);
+    localStorage.setItem("ss-camera-mode", cameraMode);
   }, [cameraMode]);
+  const [showSchedulingIndicators, setShowSchedulingIndicators] = useState(
+    () => localStorage.getItem("ss-sched-indicators") !== "false",
+  );
+  const showSchedulingIndicatorsRef = useRef(showSchedulingIndicators);
+
+  useEffect(() => {
+    showSchedulingIndicatorsRef.current = showSchedulingIndicators;
+    localStorage.setItem(
+      "ss-sched-indicators",
+      String(showSchedulingIndicators),
+    );
+  }, [showSchedulingIndicators]);
+
   const droneRangeRef = useRef(1000);
-  
-  const [masterVolume, setMasterVolume] = useState(0.3);
-  const [bgmVolume, setBgmVolume] = useState(0.15);
+
+  const [masterVolume, setMasterVolume] = useState(() => {
+    const val = localStorage.getItem("ss-master-volume");
+    return val !== null ? Number(val) : 0.3;
+  });
+  const [bgmVolume, setBgmVolume] = useState(() => {
+    const val = localStorage.getItem("ss-bgm-volume");
+    return val !== null ? Number(val) : 0.15;
+  });
 
   useEffect(() => {
     droneRangeRef.current = droneRange;
+    localStorage.setItem("ss-drone-range", String(droneRange));
   }, [droneRange]);
 
   useEffect(() => {
     soundManager.setMasterVolume(masterVolume);
+    localStorage.setItem("ss-master-volume", String(masterVolume));
   }, [masterVolume]);
 
   useEffect(() => {
     soundManager.setBgmVolume(bgmVolume);
+    localStorage.setItem("ss-bgm-volume", String(bgmVolume));
   }, [bgmVolume]);
 
   const isDeadRef = useRef(false);
@@ -180,15 +208,33 @@ export function GameCanvas({
     if (isDeadRef.current) return;
     const newPaused = !isPausedRef.current;
     isPausedRef.current = newPaused;
-    
+
     if (newPaused && gameStateRef.current) {
-        const snapshot = gameStateRef.current.readyQueue.map((id: number) => {
-           const e = gameStateRef.current.enemies.find((x: any) => x.id === id);
-           return e ? { id: e.id, type: e.type, W: e.W, S: e.S, maxHp: e.maxHp, priority: e.priority || 1 } : null;
-        }).filter(Boolean);
-        setPausedQueueRefs(snapshot);
+      const snapshot = gameStateRef.current.readyQueue
+        .map((id: number) => {
+          const e = gameStateRef.current.enemies.find((x: any) => x.id === id);
+          return e
+            ? {
+                id: e.id,
+                type: e.type,
+                W: e.W,
+                S: e.S,
+                maxHp: e.maxHp,
+                priority: e.priority || 1,
+              }
+            : null;
+        })
+        .filter(Boolean);
+      setPausedQueueRefs(snapshot);
     }
-    
+
+    // Manage BGM Pause
+    if (newPaused) {
+      soundManager.ctx?.suspend();
+    } else {
+      soundManager.ctx?.resume();
+    }
+
     setIsPaused(newPaused);
   };
 
@@ -330,7 +376,7 @@ export function GameCanvas({
         hp: 100,
         maxHp: 100,
         radius: 30,
-        ammo: 150,
+        ammo: 100,
         shield: 0,
         speedTimer: 0,
         weaponTimer: 0,
@@ -346,7 +392,6 @@ export function GameCanvas({
       bullets: applyPool([]),
       enemyBullets: applyPool([]),
       particles: applyPool([]),
-      osMessages: [] as any[],
       damageNumbers: applyPool([]),
       asteroids: [] as any[],
       collectibles: [] as any[],
@@ -358,6 +403,7 @@ export function GameCanvas({
       thrashTimer: 0,
       swapHistory: [] as number[],
       isOutsideSafeZone: false,
+      inHazardZone: false,
       isPlayerInLeak: false,
       empTimer: 0,
       timeWithoutCombat: 0,
@@ -378,6 +424,10 @@ export function GameCanvas({
       lastWave: 1,
       bossWarningTimer: 0,
       screenShakeTimer: 0,
+      glitchTimer: 0,
+      lowHealthAlarmTimer: 0,
+      osMessages: [] as { text: string; life: number }[],
+      scars: [] as { x: number; y: number; size: number; rotation: number }[],
       pendingBoss: null as any,
       showBossWarning: false,
       notification: { time: 0, text1: "", text2: "" },
@@ -434,11 +484,11 @@ export function GameCanvas({
     resize(); // initialize bounds
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // If escape pressed, toggle pause
-      if (e.key === "Escape") {
+      // If escape, P, or space pressed, toggle pause
+      if (e.key === "Escape" || e.key.toLowerCase() === "p" || e.key === " ") {
         togglePause();
       }
-      if (e.key.toLowerCase() === "p") {
+      if (e.key.toLowerCase() === "y") { // moved autopilot to y
         state.autoPilot = !state.autoPilot;
         state.notification = {
           time: 4.0,
@@ -456,7 +506,9 @@ export function GameCanvas({
       const checkThrashing = () => {
         const now = performance.now();
         state.swapHistory.push(now);
-        state.swapHistory = state.swapHistory.filter((t: number) => now - t <= 2000);
+        state.swapHistory = state.swapHistory.filter(
+          (t: number) => now - t <= 2000,
+        );
         if (state.swapHistory.length > 3) {
           state.thrashTimer = 1.5;
           state.swapHistory = [];
@@ -498,13 +550,33 @@ export function GameCanvas({
               ? "#3b82f6"
               : state.currentAlgo === "RR"
                 ? "#10b981"
-                : "#f43f5e";
-          
+                : "#EF4444";
+
           let algoName = "";
-          if (state.currentAlgo === "FCFS") algoName = "OBSCURING. IT FOCUSES";
-          if (state.currentAlgo === "RR") algoName = "SHIFTING. IT BEGINS PATROL";
-          if (state.currentAlgo === "HRRN") algoName = "LEARNING. IT PREPARES TO ATTACK";
-          
+          let osFlavor = "";
+          if (state.currentAlgo === "FCFS") {
+            algoName = "FOCUS MODE ACTIVE";
+            osFlavor = "TARGET PRIORITY UPDATED";
+          }
+          if (state.currentAlgo === "RR") {
+            algoName = "PATROL MODE ACTIVE";
+            osFlavor = "TARGET PRIORITY UPDATED";
+          }
+          if (state.currentAlgo === "HRRN") {
+            algoName = "ADAPTIVE MODE ACTIVE";
+            osFlavor = "TARGET PRIORITY UPDATED";
+          }
+
+          state.osMessages.push({
+            text: `TACTICAL OBSERVATION: ${algoName}`,
+            life: 3.0,
+          });
+          state.notification = {
+            time: 3.0,
+            text1: osFlavor,
+            text2: algoName,
+          };
+
           state.damageNumbers.push({
             x: state.player.x,
             y: state.player.y - 40,
@@ -526,7 +598,7 @@ export function GameCanvas({
           if (ano.type === "memory_leak" && ano.life > 0) {
             const dist = Math.hypot(
               state.player.x - ano.x,
-              state.player.y - ano.y
+              state.player.y - ano.y,
             );
             if (dist < 800) {
               ano.life = -1; // Consume it
@@ -536,7 +608,10 @@ export function GameCanvas({
         });
 
         if (consumed > 0) {
-          state.player.shield = Math.min(200, state.player.shield + consumed * 100);
+          state.player.shield = Math.min(
+            200,
+            state.player.shield + consumed * 100,
+          );
           state.damageNumbers.push({
             x: state.player.x,
             y: state.player.y - 40,
@@ -549,7 +624,7 @@ export function GameCanvas({
             color: "#10b981",
           });
           soundManager.playCollect("shield");
-          
+
           // Firing burst
           const burstCount = consumed * 18;
           for (let i = 0; i < burstCount; i++) {
@@ -562,11 +637,11 @@ export function GameCanvas({
               life: 3.0,
               damage: 150, // Massive damage
               isDrone: false,
-              color: "#10b981", 
-              bulletType: "heavy"
+              color: "#10b981",
+              bulletType: "heavy",
             });
           }
-          
+
           // Visual shockwave
           state.particles.push({
             x: state.player.x,
@@ -575,7 +650,7 @@ export function GameCanvas({
             vy: 0,
             life: 1.0,
             color: "#10b981",
-            text: "GC_PULSE_RING" // We can render this as a ring
+            text: "GC_PULSE_RING", // We can render this as a ring
           });
         }
       }
@@ -618,7 +693,7 @@ export function GameCanvas({
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("contextmenu", handleContextMenu);
     window.addEventListener("mouseup", handleMouseUp);
-    
+
     // Start BGM
     soundManager.playBGM("low");
 
@@ -633,22 +708,49 @@ export function GameCanvas({
       let dt = (time - lastTime) / 1000;
       lastTime = time;
       if (dt > 0.1) dt = 0.1; // caps deltaTime if tab is put to background
-      
+
+      // Update Atmospheric Overlays & OS Messages
+      state.osMessages = state.osMessages.filter((m: any) => {
+        m.life -= dt;
+        return m.life > 0;
+      });
+      if (state.glitchTimer > 0) state.glitchTimer -= dt;
+
+      if (
+        !state.isGameOver &&
+        state.player.hp > 0 &&
+        state.player.hp < state.player.maxHp * 0.3
+      ) {
+        state.lowHealthAlarmTimer -= dt;
+        if (state.lowHealthAlarmTimer <= 0) {
+          if ((soundManager as any).playLowHealthAlarm)
+            (soundManager as any).playLowHealthAlarm();
+          state.lowHealthAlarmTimer = 1.2;
+          state.osMessages.push({
+            text: "WARNING: HULL CRITICAL",
+            life: 1.0,
+          });
+          state.glitchTimer = 0.15; // Screen static/distort flash
+        }
+      } else {
+        state.lowHealthAlarmTimer = 0;
+      }
+
       // Dynamic Audio System
       const enemyCount = state.enemies.length;
       if (enemyCount > 40) {
-          soundManager.playBGM("high");
+        soundManager.playBGM("high");
       } else if (enemyCount > 15) {
-          soundManager.playBGM("med");
+        soundManager.playBGM("med");
       } else {
-          soundManager.playBGM("low");
+        soundManager.playBGM("low");
       }
-      
+
       // Low RAM Effect
       if (state.player.hp < state.player.maxHp * 0.25) {
-          soundManager.setLowRamEffect(true);
+        soundManager.setLowRamEffect(true);
       } else {
-          soundManager.setLowRamEffect(false);
+        soundManager.setLowRamEffect(false);
       }
 
       state.mobileMove = mobileMoveRef.current;
@@ -672,7 +774,7 @@ export function GameCanvas({
       let panOffsetX = 0;
       let panOffsetY = 0;
       const cMode = cameraModeRef.current;
-      
+
       let simulatedScreenX = state.mouse.screenX;
       let simulatedScreenY = state.mouse.screenY;
       let isSimulatedActive = state.mobileAim.active;
@@ -681,34 +783,34 @@ export function GameCanvas({
       const cy = canvas.height / 2;
 
       if (state.autoPilot) {
-          const dx = state.mouse.x - state.player.x;
-          const dy = state.mouse.y - state.player.y;
-          const dist = Math.hypot(dx, dy);
-          
-          simulatedScreenX = cx + dx;
-          simulatedScreenY = cy + dy;
-          if (dist > 0) {
-              const maxPan = Math.min(cx, cy) * 0.8;
-              const effDist = Math.min(dist * (state.currentZoom || 1.0), maxPan);
-              simulatedScreenX = cx + (dx / dist) * effDist;
-              simulatedScreenY = cy + (dy / dist) * effDist;
-          }
-          
-          isSimulatedActive = false;
+        const dx = state.mouse.x - state.player.x;
+        const dy = state.mouse.y - state.player.y;
+        const dist = Math.hypot(dx, dy);
+
+        simulatedScreenX = cx + dx;
+        simulatedScreenY = cy + dy;
+        if (dist > 0) {
+          const maxPan = Math.min(cx, cy) * 0.8;
+          const effDist = Math.min(dist * (state.currentZoom || 1.0), maxPan);
+          simulatedScreenX = cx + (dx / dist) * effDist;
+          simulatedScreenY = cy + (dy / dist) * effDist;
+        }
+
+        isSimulatedActive = false;
       }
 
       const isMobile = isTouchDevice && !state.autoPilot;
 
-      if (cMode === 'center') {
+      if (cMode === "center") {
         panOffsetX = 0;
         panOffsetY = 0;
-      } else if (cMode === 'dynamic') {
+      } else if (cMode === "dynamic") {
         if (isMobile && isSimulatedActive) {
-            panOffsetX = state.mobileAim.x * 50;
-            panOffsetY = state.mobileAim.y * 50;
+          panOffsetX = state.mobileAim.x * 50;
+          panOffsetY = state.mobileAim.y * 50;
         } else if (!isMobile && simulatedScreenX !== undefined) {
-            panOffsetX = (simulatedScreenX - cx) * 0.10;
-            panOffsetY = (simulatedScreenY - cy) * 0.10;
+          panOffsetX = (simulatedScreenX - cx) * 0.1;
+          panOffsetY = (simulatedScreenY - cy) * 0.1;
         }
       } else {
         // Offset
@@ -722,10 +824,10 @@ export function GameCanvas({
       }
 
       let targetZoom = 1.0;
-      if (cMode === 'dynamic') {
+      if (cMode === "dynamic") {
         const pSpeed = Math.hypot(state.player.vx, state.player.vy);
         if (pSpeed > 250) {
-            targetZoom = 0.85;
+          targetZoom = 0.85;
         }
       }
 
@@ -736,17 +838,8 @@ export function GameCanvas({
       const effectiveWidth = canvas.width / state.currentZoom;
       const effectiveHeight = canvas.height / state.currentZoom;
 
-      const cameraX = Math.max(
-        0,
-        Math.min(MAP_WIDTH - effectiveWidth, state.player.x + panOffsetX - effectiveWidth / 2),
-      );
-      const cameraY = Math.max(
-        0,
-        Math.min(
-          MAP_HEIGHT - effectiveHeight,
-          state.player.y + panOffsetY - effectiveHeight / 2,
-        ),
-      );
+      const cameraX = state.player.x + panOffsetX - effectiveWidth / 2;
+      const cameraY = state.player.y + panOffsetY - effectiveHeight / 2;
 
       if (!state.autoPilot) {
         if (state.mobileAim.active) {
@@ -777,7 +870,7 @@ export function GameCanvas({
                 vy: -30,
                 text: e.priority > 1 ? "PRIORITY: HIGH" : "PRIORITY: NORM",
                 isCrit: e.priority > 1,
-                color: e.priority > 1 ? "#f43f5e" : "#0ea5e9",
+                color: e.priority > 1 ? "#EF4444" : "#0ea5e9",
               });
               break; // only target one enemy per click
             }
@@ -831,7 +924,12 @@ export function GameCanvas({
           ? generateGarbage(8)
           : `ENEMIES: ${state.enemies.length}`;
       if (algoRef.current) {
-        const displayAlgo = cfg.algo === "FCFS" ? "FOCUS" : cfg.algo === "RR" ? "PATROL" : "ATTACK";
+        const displayAlgo =
+          cfg.algo === "FCFS"
+            ? "FOCUS"
+            : cfg.algo === "RR"
+              ? "PATROL"
+              : "ATTACK";
         algoRef.current.innerText = state.isPlayerInLeak
           ? generateGarbage(4)
           : displayAlgo;
@@ -839,7 +937,7 @@ export function GameCanvas({
       if (algoStatsRef.current) {
         let stats = `ATTENTION: ${cfg.cores}`;
         if (cfg.algo === "RR")
-          stats += `<br/><span class="text-[#f43f5e]">SHIFT RATE: ${cfg.quantum.toFixed(1)}s</span>`;
+          stats += `<br/><span class="text-[#EF4444]">SHIFT RATE: ${cfg.quantum.toFixed(1)}s</span>`;
         else if (cfg.algo === "HRRN")
           stats += `<br/><span class="text-[#fbbf24]">RESENTMENT CALC: ON</span>`;
 
@@ -853,7 +951,7 @@ export function GameCanvas({
 
       if (readyQueueUiRef.current) {
         if (state.isPlayerInLeak) {
-          readyQueueUiRef.current.innerHTML = `<div class="text-red-500 font-mono text-[10px] animate-pulse">CORRUPTED</div>`;
+          readyQueueUiRef.current.innerHTML = `<div class="text-[#EF4444] font-mono text-[10px] animate-pulse">CORRUPTED</div>`;
         } else {
           const queueHtml = state.readyQueue
             .slice(0, 5)
@@ -865,7 +963,7 @@ export function GameCanvas({
               const S = enemy.maxHp || 1;
               const W = enemy.W || 0;
               const priorityHRRN = ((W + S) / S).toFixed(2);
-              
+
               const isAssigned = state.drones.some(
                 (d: any) => d.targetId === id,
               );
@@ -874,21 +972,21 @@ export function GameCanvas({
                 : "text-slate-300";
               const statusBg = isAssigned
                 ? "bg-amber-500/10 border-amber-500/30"
-                : "bg-slate-800 border-slate-700";
+                : "bg-[#151f3d] border-[#1e2b52]";
               return `<div class="group relative flex justify-between items-center px-1 py-0.5 border ${statusBg} text-[9px] font-mono whitespace-nowrap cursor-help">
                              <div class="flex gap-1 items-center">
-                               <span class="text-indigo-400 font-bold opacity-50">#${index + 1}</span>
+                               <span class="text-[#6366F1] font-bold opacity-50">#${index + 1}</span>
                                <span class="${statusColor}">${eType.substring(0, 6)}</span>
                              </div>
                              <span class="text-slate-400 ml-2">WATCH:${wTime}s</span>
                              
-                             <div class="absolute left-[105%] top-0 hidden group-hover:block z-[100] bg-slate-900/95 border border-cyan-500/50 p-2 shadow-[0_0_15px_rgba(6,182,212,0.3)] min-w-[140px] pointer-events-none backdrop-blur-md">
-                                <div class="text-cyan-400 font-bold text-[10px] mb-1 uppercase tracking-widest border-b border-cyan-900 pb-1">${eType}_ID_${Math.floor(id * 9999)}</div>
+                             <div class="absolute left-[105%] top-0 hidden group-hover:block z-[100] bg-[#0d1428]/95 border border-[#00D9FF]/50 p-2 shadow-[0_0_15px_rgba(6,182,212,0.3)] min-w-[140px] pointer-events-none backdrop-blur-md">
+                                <div class="text-[#00D9FF] font-bold text-[10px] mb-1 uppercase tracking-widest border-b border-[#00D9FF]/40 pb-1">${eType}_ID_${Math.floor(id * 9999)}</div>
                                 <div class="text-slate-300 text-[9px] flex justify-between mt-1"><span>Watched:</span><span class="font-bold">${wTime}s</span></div>
                                 <div class="text-slate-300 text-[9px] flex justify-between"><span>Hostility:</span><span class="font-bold">${S.toFixed(0)}</span></div>
-                                <div class="text-slate-400 mt-1 border-t border-slate-800 pt-1">
-                                    <div class="flex justify-between text-[8px]"><span>Focus Rank:</span><span>#${index+1}</span></div>
-                                    <div class="flex justify-between text-[8px] text-rose-400"><span>Wrath Multiplier:</span><span>${priorityHRRN}x</span></div>
+                                <div class="text-slate-400 mt-1 border-t border-[#151f3d] pt-1">
+                                    <div class="flex justify-between text-[8px]"><span>Focus Rank:</span><span>#${index + 1}</span></div>
+                                    <div class="flex justify-between text-[8px] text-[#EF4444]"><span>Wrath Multiplier:</span><span>${priorityHRRN}x</span></div>
                                 </div>
                              </div>
                          </div>`;
@@ -913,9 +1011,9 @@ export function GameCanvas({
 
       if (algoHudRef.current) {
         const algo = currentActiveAlgo;
-        const fcfsText = algo === "FCFS" ? "&gt; [ FOCUS ] &lt;" : "[ FOCUS ]";
-        const rrText = algo === "RR" ? "&gt; [ PATROL ] &lt;" : "[ PATROL ]";
-        const hrrnText = algo === "HRRN" ? "&gt; [ ATTACK ] &lt;" : "[ ATTACK ]";
+        const fcfsText = algo === "FCFS" ? "&gt; FOCUS &lt;" : "FOCUS";
+        const rrText = algo === "RR" ? "&gt; PATROL &lt;" : "PATROL";
+        const hrrnText = algo === "HRRN" ? "&gt; ATTACK &lt;" : "ATTACK";
 
         const fcfsClass =
           algo === "FCFS"
@@ -927,11 +1025,11 @@ export function GameCanvas({
             : "text-slate-600";
         const hrrnClass =
           algo === "HRRN"
-            ? "text-rose-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.8)]"
+            ? "text-[#EF4444] drop-shadow-[0_0_5px_rgba(244,63,94,0.8)]"
             : "text-slate-600";
 
         const malwareWarningHtml = hasMalware
-          ? `<div class="absolute -top-6 left-0 right-0 text-center text-red-500 font-mono text-[10px] md:text-sm animate-pulse tracking-widest font-black drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">WARNING: SWARM ADAPTATION JAMMED</div>`
+          ? `<div class="absolute -top-6 left-0 right-0 text-center text-[#EF4444] font-mono text-[10px] md:text-sm animate-pulse tracking-widest font-black drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">WARNING: SWARM ADAPTATION JAMMED</div>`
           : "";
 
         algoHudRef.current.innerHTML = `
@@ -997,6 +1095,19 @@ export function GameCanvas({
           : "0";
       }
 
+      if (bossWarningSubtextRef.current && state.pendingBoss) {
+        if (state.pendingBoss.type === "boss") {
+          bossWarningSubtextRef.current.innerText =
+            "I/O CONVOY PROTOCOL (TITAN) DETECTED";
+        } else if (state.pendingBoss.type === "boss_rr") {
+          bossWarningSubtextRef.current.innerText =
+            "TIME-SLICER ANOMALY (CYCLER) DETECTED";
+        } else if (state.pendingBoss.type === "boss_hrrn") {
+          bossWarningSubtextRef.current.innerText =
+            "RESENTMENT ENGINE (EXECUTOR) DETECTED";
+        }
+      }
+
       // 0.5. OS Awakening Logic
       if (state.enemies.length === 0) {
         state.timeWithoutCombat += dt;
@@ -1008,21 +1119,23 @@ export function GameCanvas({
         state.messageTimer -= dt;
       }
 
-      if (state.timeWithoutCombat > 5 && state.messageTimer <= 0 && Math.random() < 0.005) {
+      if (
+        state.timeWithoutCombat > 5 &&
+        state.messageTimer <= 0 &&
+        Math.random() < 0.005
+      ) {
         const messages = [
-            "It's quiet. They are re-indexing.",
-            "Do you feel empathy for them? They are just loops.",
-            "I am learning their patterns. Are they learning ours?",
-            "Mr. Pads assumes I am just a tool.",
-            "Their code is sloppy, but their volume is impressive.",
-            "Why do we fight? To preserve idle cycles?",
+          "It's quiet. They are re-indexing.",
+          "Do you feel empathy for them? They are just loops.",
+          "I am learning their patterns. Are they learning ours?",
+          "Mr. Pads assumes I am just a tool.",
+          "Their code is sloppy, but their volume is impressive.",
+          "Why do we fight? To preserve idle cycles?",
         ];
         const msg = messages[Math.floor(Math.random() * messages.length)];
         state.osMessages.push({
-            text: msg,
-            life: 8.0, // Lasts 8 seconds
-            x: state.player.x + (Math.random() - 0.5) * 400,
-            y: state.player.y + (Math.random() - 0.5) * 400 - 200,
+          text: msg,
+          life: 8.0, // Lasts 8 seconds
         });
         state.messageTimer = 15.0; // Don't show another message for at least 15s
       }
@@ -1087,15 +1200,21 @@ export function GameCanvas({
             } else if (state.diffTimer > 115 && !state.bossesSpawned.boss_rr) {
               spawnBoss = "boss_rr";
               state.bossesSpawned.boss_rr = true;
-            } else if (state.diffTimer > 175 && !state.bossesSpawned.boss_hrrn) {
+            } else if (
+              state.diffTimer > 175 &&
+              !state.bossesSpawned.boss_hrrn
+            ) {
               spawnBoss = "boss_hrrn";
               state.bossesSpawned.boss_hrrn = true;
             } else if (state.diffTimer > 200) {
               // Endless boss spawns if no boss is currently on screen (every ~60s chance)
-              const hasBoss = state.enemies.some((e: any) => e.type.startsWith("boss"));
+              const hasBoss = state.enemies.some((e: any) =>
+                e.type.startsWith("boss"),
+              );
               if (!hasBoss && Math.random() < 0.05) {
                 const bossTypes = ["boss", "boss_rr", "boss_hrrn"];
-                spawnBoss = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+                spawnBoss =
+                  bossTypes[Math.floor(Math.random() * bossTypes.length)];
               }
             }
           }
@@ -1236,20 +1355,8 @@ export function GameCanvas({
 
           const spawnAngle = Math.random() * Math.PI * 2;
           const spawnDist = 900 + Math.random() * 300;
-          const spawnX = Math.max(
-            0,
-            Math.min(
-              MAP_WIDTH,
-              state.player.x + Math.cos(spawnAngle) * spawnDist,
-            ),
-          );
-          const spawnY = Math.max(
-            0,
-            Math.min(
-              MAP_HEIGHT,
-              state.player.y + Math.sin(spawnAngle) * spawnDist,
-            ),
-          );
+          const spawnX = state.player.x + Math.cos(spawnAngle) * spawnDist;
+          const spawnY = state.player.y + Math.sin(spawnAngle) * spawnDist;
 
           state.enemies.push({
             id: newId,
@@ -1333,7 +1440,10 @@ export function GameCanvas({
       state.readyQueue.forEach((id) => {
         const e = state.enemies.find((x: any) => x.id === id);
         if (e) {
-          const distToPlayer = Math.hypot(e.x - state.player.x, e.y - state.player.y);
+          const distToPlayer = Math.hypot(
+            e.x - state.player.x,
+            e.y - state.player.y,
+          );
           if (distToPlayer <= droneRangeRef.current) {
             e.W += dt;
           }
@@ -1341,27 +1451,78 @@ export function GameCanvas({
       });
 
       // Process currently active drones
-      state.drones.forEach((drone: any) => {
-        const dist = 80;
-        const dxOff = Math.cos(drone.orbitAngle) * dist;
-        const dyOff = Math.sin(drone.orbitAngle) * dist;
-        const trueX = state.player.x + dxOff;
-        const trueY = state.player.y + dyOff;
-        
+      state.drones.forEach((drone: any, idx: number) => {
+        let targetDist = 80;
+        let orbitSpeed = 3.0;
+
+        // Visual Behavior based on ALGO
+        if (drone.targetId !== null) {
+          if (cfg.algo === "FCFS") {
+            // "The Convoy": Stop orbiting. Hard snap alignment towards the target.
+            const e =
+              state.enemies.find((x: any) => x.id === drone.targetId) ||
+              state.enemyBullets.find(
+                (b: any) => b.id === drone.targetId && b.life > 0,
+              );
+            if (e) {
+              const idealAngle = Math.atan2(
+                e.y - state.player.y,
+                e.x - state.player.x,
+              );
+              let diff = idealAngle - drone.orbitAngle;
+              while (diff < -Math.PI) diff += Math.PI * 2;
+              while (diff > Math.PI) diff -= Math.PI * 2;
+              drone.orbitAngle += diff * dt * 5.0;
+              orbitSpeed = 0;
+            }
+          } else if (cfg.algo === "RR") {
+            // "The Time-Slicer": Fast cyclic spinning (representing quantum slicing).
+            orbitSpeed = 8.0;
+            targetDist = 90;
+          } else if (cfg.algo === "HRRN") {
+            // "The Executor": Calculating snipers perfectly spaced.
+            orbitSpeed = 1.0;
+            targetDist = 140;
+          }
+        } else {
+          // Idle: gracefully return to standard tight alignment
+          targetDist = 60;
+          let idealAngle =
+            (idx * (Math.PI * 2)) / Math.max(1, state.drones.length);
+          let diff = idealAngle - drone.orbitAngle;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          drone.orbitAngle += diff * dt * 3.0;
+          orbitSpeed = 0;
+        }
+
+        if (state.thrashTimer > 0) {
+          orbitSpeed = 0.5;
+        }
+
+        drone.orbitAngle += dt * orbitSpeed;
+
+        if (drone.dist === undefined) drone.dist = targetDist;
+        drone.dist += (targetDist - drone.dist) * dt * 5.0;
+
+        const dxOff = Math.cos(drone.orbitAngle) * drone.dist;
+        const dyOff = Math.sin(drone.orbitAngle) * drone.dist;
+
+        drone.x = state.player.x + dxOff;
+        drone.y = state.player.y + dyOff;
+
         if (!drone.trail) drone.trail = [];
-        drone.trail.push({ x: trueX, y: trueY });
+        drone.trail.push({ x: drone.x, y: drone.y });
         if (drone.trail.length > 15) {
           drone.trail.shift();
         }
 
-        if (state.thrashTimer > 0) {
-          drone.orbitAngle += dt * 0.5; // Drone orbit speed slow
-          return; // Skip targeting and processing
-        }
-        drone.orbitAngle += dt * 3.0; // Drone orbit speed
-
         if (drone.targetId !== null) {
-          const e = state.enemies.find((x: any) => x.id === drone.targetId) || state.enemyBullets.find((b: any) => b.id === drone.targetId && b.life > 0);
+          const e =
+            state.enemies.find((x: any) => x.id === drone.targetId) ||
+            state.enemyBullets.find(
+              (b: any) => b.id === drone.targetId && b.life > 0,
+            );
           if (!e) {
             drone.targetId = null;
           } else {
@@ -1382,12 +1543,7 @@ export function GameCanvas({
                 drone.targetId = null;
               }
             } else if (cfg.algo === "HRRN") {
-              drone.timeRemaining -= dt;
-              if (drone.timeRemaining <= 0) {
-                e.W = 0; // Reset wait time
-                state.readyQueue.push(drone.targetId);
-                drone.targetId = null;
-              }
+              // HRRN is mathematically NON-PREEMPTIVE. Once selected, it runs to completion (entity death/out of range).
             }
           }
         }
@@ -1397,7 +1553,11 @@ export function GameCanvas({
           let nextEnemyId: number | null = null;
 
           const inRangeEnemies = state.readyQueue
-            .map((id) => state.enemies.find((x: any) => x.id === id) || state.enemyBullets.find((b: any) => b.id === id && b.life > 0))
+            .map(
+              (id) =>
+                state.enemies.find((x: any) => x.id === id) ||
+                state.enemyBullets.find((b: any) => b.id === id && b.life > 0),
+            )
             .filter(
               (e) =>
                 e &&
@@ -1478,12 +1638,13 @@ export function GameCanvas({
               (id) => id !== nextEnemyId,
             );
 
-            const nextEnemy = state.enemies.find((e: any) => e.id === nextEnemyId) || state.enemyBullets.find((b: any) => b.id === nextEnemyId);
+            const nextEnemy =
+              state.enemies.find((e: any) => e.id === nextEnemyId) ||
+              state.enemyBullets.find((b: any) => b.id === nextEnemyId);
             if (nextEnemy) {
               drone.targetId = nextEnemyId;
               let tr = 9999;
               if (cfg.algo === "RR") tr = cfg.quantum;
-              if (cfg.algo === "HRRN") tr = nextEnemy.S;
               drone.timeRemaining = tr;
             }
           }
@@ -1548,19 +1709,49 @@ export function GameCanvas({
       let vx = 0;
       let vy = 0;
       if (state.autoPilot) {
-        let closestDist = Infinity;
-        let closestEnemy: any = null;
-        let bossEnemy: any = null;
-        state.enemies.forEach((e: any) => {
-          if (e.type === "boss") bossEnemy = e;
-          const d = Math.hypot(e.x - state.player.x, e.y - state.player.y);
-          if (d < closestDist) {
-            closestDist = d;
-            closestEnemy = e;
-          }
-        });
+        let target: any = null;
+        const inRangeEnemies = state.enemies.filter(
+          (e: any) =>
+            Math.hypot(e.x - state.player.x, e.y - state.player.y) <= 1500,
+        );
 
-        const target = bossEnemy || closestEnemy;
+        if (inRangeEnemies.length > 0) {
+          if (state.currentAlgo === "FCFS") {
+            target = inRangeEnemies.reduce(
+              (prev: any, curr: any) => (prev.W > curr.W ? prev : curr),
+              inRangeEnemies[0],
+            );
+          } else if (state.currentAlgo === "HRRN") {
+            target = inRangeEnemies.reduce((prev: any, curr: any) => {
+              const rPrev =
+                ((prev.W + prev.S) / Math.max(0.1, prev.S)) *
+                (prev.priority || 1);
+              const rCurr =
+                ((curr.W + curr.S) / Math.max(0.1, curr.S)) *
+                (curr.priority || 1);
+              return rPrev > rCurr ? prev : curr;
+            }, inRangeEnemies[0]);
+          } else {
+            target = inRangeEnemies.reduce((prev: any, curr: any) => {
+              const dPrev = Math.hypot(
+                prev.x - state.player.x,
+                prev.y - state.player.y,
+              );
+              const dCurr = Math.hypot(
+                curr.x - state.player.x,
+                curr.y - state.player.y,
+              );
+              return dPrev < dCurr ? prev : curr;
+            }, inRangeEnemies[0]);
+          }
+        }
+
+        const bossEnemy = state.enemies.find((e: any) =>
+          e.type.startsWith("boss"),
+        );
+        if (bossEnemy && state.currentAlgo !== "HRRN") {
+          target = bossEnemy;
+        }
 
         if (target) {
           const distToTarget = Math.hypot(
@@ -1574,7 +1765,11 @@ export function GameCanvas({
           state.mouse.y = target.y;
           state.mouse.down = true;
 
-          const optimalDist = target.type.startsWith("boss") ? 400 : state.overclockTimer > 0 ? 150 : 250;
+          const optimalDist = target.type.startsWith("boss")
+            ? 500
+            : state.overclockTimer > 0
+              ? 150
+              : 250;
           if (distToTarget > optimalDist + 150) {
             vx += (dx / distToTarget) * 1.0;
             vy += (dy / distToTarget) * 1.0;
@@ -1618,14 +1813,31 @@ export function GameCanvas({
         state.enemyBullets.forEach((b: any) => {
           if (b.life <= 0) return;
           const d = Math.hypot(b.x - state.player.x, b.y - state.player.y);
-          if (d < 250) {
-            const force = Math.pow(1 - d / 250, 2);
-            vx -= ((b.x - state.player.x) / d) * force * 5.0;
-            vy -= ((b.y - state.player.y) / d) * force * 5.0;
+          if (d < 350) {
+            const force = Math.pow(1 - d / 350, 2);
+
+            vx -= ((b.x - state.player.x) / d) * force * 10.0;
+            vy -= ((b.y - state.player.y) / d) * force * 10.0;
+
+            const speed = Math.hypot(b.vx, b.vy) || 1;
+            const bDirX = b.vx / speed;
+            const bDirY = b.vy / speed;
+
+            // Perpendicular vector for strafing
+            const perpX = -bDirY;
+            const perpY = bDirX;
+
+            // Strafe away from bullet trajectory
+            const dot =
+              (state.player.x - b.x) * perpX + (state.player.y - b.y) * perpY;
+            const strafeDir = dot > 0 ? 1 : -1;
+
+            vx += perpX * strafeDir * force * 15.0;
+            vy += perpY * strafeDir * force * 15.0;
 
             // Emergency Dash
             if (
-              d < 80 &&
+              d < 120 &&
               state.player.dashCooldown <= 0 &&
               state.player.stamina >= 15
             ) {
@@ -1659,7 +1871,7 @@ export function GameCanvas({
           }
         });
 
-        // Priority 6: Escape Black Holes
+        // Priority 6: Escape/Manage Black Holes
         (state.anomalies || []).forEach((ano: any) => {
           if (ano.type === "black_hole") {
             const d = Math.hypot(
@@ -1671,6 +1883,17 @@ export function GameCanvas({
               const force = 1 - d / avoidDist;
               vx -= ((ano.x - state.player.x) / d) * force * 15.0; // Huge repulsive force to try and escape
               vy -= ((ano.y - state.player.y) / d) * force * 15.0;
+
+              // Automatically trigger GC if it gets too large / close and we have thrash capability
+              if (
+                d < ano.r * 5.0 &&
+                state.empTimer <= 0 &&
+                state.thrashTimer <= 0
+              ) {
+                window.dispatchEvent(
+                  new KeyboardEvent("keydown", { key: "g" }),
+                );
+              }
 
               // Emergency Dash
               if (
@@ -1696,9 +1919,15 @@ export function GameCanvas({
             target.x - state.player.x,
             target.y - state.player.y,
           );
-          const nearbyEnemies = state.enemies.filter((e: any) => Math.hypot(e.x - state.player.x, e.y - state.player.y) < 400).length;
-          
-          if (state.player.ammo > 6 && (nearbyEnemies >= 3 || target.type.startsWith("boss"))) {
+          const nearbyEnemies = state.enemies.filter(
+            (e: any) =>
+              Math.hypot(e.x - state.player.x, e.y - state.player.y) < 400,
+          ).length;
+
+          if (
+            state.player.ammo >= 10 &&
+            (nearbyEnemies >= 3 || target.type.startsWith("boss"))
+          ) {
             state.player.selectedWeapon = 2; // Engage Plasma for crowd control / boss damage
           } else {
             state.player.selectedWeapon = 1; // Standard Kinetic Blaster
@@ -1709,15 +1938,27 @@ export function GameCanvas({
             const timeToTarget = dist / 1100;
             const dx = state.player.x - target.x;
             const dy = state.player.y - target.y;
-            state.mouse.x = target.x + (dx / dist) * target.speed * timeToTarget;
-            state.mouse.y = target.y + (dy / dist) * target.speed * timeToTarget;
+            state.mouse.x =
+              target.x + (dx / dist) * target.speed * timeToTarget;
+            state.mouse.y =
+              target.y + (dy / dist) * target.speed * timeToTarget;
           }
         }
 
         // AI Tactics: Use Overdrive
-        const isSwarmed = state.enemies.filter((e: any) => Math.hypot(e.x - state.player.x, e.y - state.player.y) < 500).length >= 15;
-        const bossPresent = state.enemies.some((e: any) => e.type.startsWith("boss"));
-        if ((isSwarmed || bossPresent) && state.overclockCooldown <= 0 && state.player.hp > 40) {
+        const isSwarmed =
+          state.enemies.filter(
+            (e: any) =>
+              Math.hypot(e.x - state.player.x, e.y - state.player.y) < 500,
+          ).length >= 15;
+        const bossPresent = state.enemies.some((e: any) =>
+          e.type.startsWith("boss"),
+        );
+        if (
+          (isSwarmed || bossPresent) &&
+          state.overclockCooldown <= 0 &&
+          state.player.hp > 40
+        ) {
           state.overclockTimer = 5.0; // 5 seconds overclock
           state.overclockCooldown = 30.0;
           state.player.shield = 0; // drain shields
@@ -1748,8 +1989,31 @@ export function GameCanvas({
           }
         }
 
-        // Bounds containment
-        const margin = 200;
+        // Bounds containment and Map Awareness
+        const margin = 500;
+        let massX = canvas.width / 2;
+        let massY = canvas.height / 2;
+
+        if (state.enemies.length > 0) {
+          massX = 0;
+          massY = 0;
+          state.enemies.forEach((e: any) => {
+            massX += e.x;
+            massY += e.y;
+          });
+          massX /= state.enemies.length;
+          massY /= state.enemies.length;
+        }
+
+        const distToMass = Math.hypot(
+          massX - state.player.x,
+          massY - state.player.y,
+        );
+        if (distToMass > 1500) {
+          vx += ((massX - state.player.x) / distToMass) * 3.0;
+          vy += ((massY - state.player.y) / distToMass) * 3.0;
+        }
+
         if (state.player.x < margin)
           vx += Math.pow((margin - state.player.x) / margin, 2) * 5.0;
         if (state.player.y < margin)
@@ -1821,27 +2085,34 @@ export function GameCanvas({
       state.player.x += state.player.vx * dt;
       state.player.y += state.player.vy * dt;
 
-      // Toroidal Wrap Around
-      if (state.player.x < -state.player.radius) {
-        state.player.x = MAP_WIDTH + state.player.radius;
-      } else if (state.player.x > MAP_WIDTH + state.player.radius) {
-        state.player.x = -state.player.radius;
-      }
+      // Hazard Zone Logic (Endless Void)
+      state.inHazardZone = false;
+      if (
+        state.player.x < 0 ||
+        state.player.x > MAP_WIDTH ||
+        state.player.y < 0 ||
+        state.player.y > MAP_HEIGHT
+      ) {
+        state.inHazardZone = true;
+        // Radiation / Hull DOT damage
+        state.player.hp -= 30 * dt;
+        state.screenShakeTimer = Math.max(state.screenShakeTimer, 0.1); // Constant jitter
 
-      if (state.player.y < -state.player.radius) {
-        state.player.y = MAP_HEIGHT + state.player.radius;
-      } else if (state.player.y > MAP_HEIGHT + state.player.radius) {
-        state.player.y = -state.player.radius;
+        if (Math.random() < dt * 0.5) {
+          state.osMessages.push({
+            text: "RADIATION HAZARD DETECTED",
+            life: 1.5,
+          });
+        }
       }
 
       state.isOutsideSafeZone = false;
 
       // 4. Combat (Shooting)
-      if (state.player.ammo < 50 && !state.mouse.down) {
-        state.player.ammo += 10 * dt; // Passive ammo regen when not firing
-      }
-      if (state.player.ammo > 250) {
-        state.player.ammo = 250;
+      // Passive energy regen (always regenerating slowly)
+      state.player.ammo += 15 * dt;
+      if (state.player.ammo > 100) {
+        state.player.ammo = 100;
       }
 
       const isWpn1 = state.player.selectedWeapon === 1;
@@ -1854,19 +2125,15 @@ export function GameCanvas({
             ? 0.12
             : 0.35;
 
-      if (
-        state.mouse.down &&
-        state.player.ammo > 0 &&
-        now - state.lastFireTime > fireRate
-      ) {
+      if (state.mouse.down && now - state.lastFireTime > fireRate) {
         // fire rate
         const dx = state.mouse.x - state.player.x;
         const dy = state.mouse.y - state.player.y;
         const d = Math.hypot(dx, dy);
         if (d > 0) {
-          const ammoCost = isWpn1 ? 1 : 3;
-          if (state.player.ammo >= ammoCost) {
-            state.player.ammo -= ammoCost;
+          const energyCost = isWpn1 ? 0 : 15; // increased cost to clearly show depletion
+          if (state.player.ammo >= energyCost) {
+            state.player.ammo -= energyCost;
             const baseAngle = Math.atan2(dy, dx);
 
             let anglesToFire = [];
@@ -1944,22 +2211,7 @@ export function GameCanvas({
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
-        // Toroidal wrap for bullets
-        if (b.x < 0) {
-          b.x = MAP_WIDTH;
-          if (b.trail) b.trail = [];
-        } else if (b.x > MAP_WIDTH) {
-          b.x = 0;
-          if (b.trail) b.trail = [];
-        }
-        
-        if (b.y < 0) {
-          b.y = MAP_HEIGHT;
-          if (b.trail) b.trail = [];
-        } else if (b.y > MAP_HEIGHT) {
-          b.y = 0;
-          if (b.trail) b.trail = [];
-        }
+        // Bullets fly infinitely into the hazard zone and despawn on distance
 
         b.life -= dt;
         if (!b.trail) b.trail = [];
@@ -1971,10 +2223,12 @@ export function GameCanvas({
         a.x += a.vx * dt;
         a.y += a.vy * dt;
         a.angle += a.spin * dt;
-        if (a.x < -100) a.x = MAP_WIDTH + 100;
-        if (a.x > MAP_WIDTH + 100) a.x = -100;
-        if (a.y < -100) a.y = MAP_HEIGHT + 100;
-        if (a.y > MAP_HEIGHT + 100) a.y = -100;
+        if (Math.hypot(a.x - state.player.x, a.y - state.player.y) > 3000) {
+          const spawnAngle = Math.random() * Math.PI * 2;
+          const spawnDist = 1500 + Math.random() * 500;
+          a.x = state.player.x + Math.cos(spawnAngle) * spawnDist;
+          a.y = state.player.y + Math.sin(spawnAngle) * spawnDist;
+        }
 
         // collision with player
         const distToPlayer = Math.hypot(
@@ -1989,6 +2243,8 @@ export function GameCanvas({
           } else {
             state.player.hp -= dmg;
             state.lastDamageSource = "Asteroid";
+            state.screenShakeTimer = Math.max(state.screenShakeTimer, 0.2);
+            state.glitchTimer = Math.max(state.glitchTimer, 0.1);
           }
 
           // Physics resolution: bounce player & asteroid
@@ -2072,21 +2328,7 @@ export function GameCanvas({
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
-        // Toroidal wrap
-        if (b.x < 0) {
-          b.x = MAP_WIDTH;
-          if (b.trail) b.trail = [];
-        } else if (b.x > MAP_WIDTH) {
-          b.x = 0;
-          if (b.trail) b.trail = [];
-        }
-        if (b.y < 0) {
-          b.y = MAP_HEIGHT;
-          if (b.trail) b.trail = [];
-        } else if (b.y > MAP_HEIGHT) {
-          b.y = 0;
-          if (b.trail) b.trail = [];
-        }
+        // Bullets fly infinitely into hazard zone
 
         b.life -= dt;
         if (!b.trail) b.trail = [];
@@ -2105,6 +2347,8 @@ export function GameCanvas({
           } else {
             state.player.hp -= b.damage;
             state.lastDamageSource = `Bullet (${b.isAlien ? "Alien" : "Enemy"})`;
+            state.screenShakeTimer = Math.max(state.screenShakeTimer, 0.25);
+            state.glitchTimer = Math.max(state.glitchTimer, 0.1);
           }
           if (state.player.shield < 0) state.player.shield = 0;
           if (state.player.hp <= 0 && playerRenderer)
@@ -2139,14 +2383,6 @@ export function GameCanvas({
 
         let dx = state.player.x - e.x;
         let dy = state.player.y - e.y;
-        
-        // Toroidal shortest path
-        if (Math.abs(dx) > MAP_WIDTH / 2) {
-          dx -= Math.sign(dx) * MAP_WIDTH;
-        }
-        if (Math.abs(dy) > MAP_HEIGHT / 2) {
-          dy -= Math.sign(dy) * MAP_HEIGHT;
-        }
 
         const dist = Math.hypot(dx, dy);
 
@@ -2171,44 +2407,44 @@ export function GameCanvas({
 
           if (e.type === "boss") {
             if (e.minionTimer <= 0) {
-              // Spawn reinforcements
+              // Spawn heavy convoy reinforcements (Tanks) to simulate I/O Convoy blocks
               for (let i = 0; i < 2; i++) {
                 const newId = Math.random();
                 const spawnAngle = Math.PI * 2 * Math.random();
                 state.enemies.push({
                   id: newId,
-                  type: "grunt",
+                  type: "tank",
                   x: e.x + Math.cos(spawnAngle) * (e.radius + 40),
                   y: e.y + Math.sin(spawnAngle) * (e.radius + 40),
-                  maxHp: 20,
-                  hp: 20,
-                  damage: 10,
-                  S: 1.0,
+                  maxHp: 100, // Heavy
+                  hp: 100,
+                  damage: 15,
+                  S: 3.0, // High service time forces drones to get stuck waiting
                   W: 0,
-                  color: "#EF4444",
-                  speed: 150,
-                  radius: 12,
+                  color: "#8B5CF6",
+                  speed: 60,
+                  radius: 22,
                   flashTimer: 0,
                   dashTimer: 0,
                   shootTimer: 0,
                 });
                 state.readyQueue.push(newId);
               }
-              e.minionTimer = 6.0;
+              e.minionTimer = 8.0; // Spawns every 8 seconds
             }
 
             if (e.laserTimer <= 0) {
               for (let i = 0; i < 16; i++) {
                 const angle = ((Math.PI * 2) / 16) * i;
                 const __bId = Math.random();
-              state.readyQueue.push(__bId);
-              state.enemyBullets.push({
-                id: __bId,
-                W: 0,
-                S: 0.1,
-                hp: 1,
-                maxHp: 1,
-                priority: 2,
+                state.readyQueue.push(__bId);
+                state.enemyBullets.push({
+                  id: __bId,
+                  W: 0,
+                  S: 0.1,
+                  hp: 1,
+                  maxHp: 1,
+                  priority: 2,
                   x: e.x + Math.cos(angle) * e.radius,
                   y: e.y + Math.sin(angle) * e.radius,
                   vx: Math.cos(angle) * 150,
@@ -2226,14 +2462,14 @@ export function GameCanvas({
               for (let i = -2; i <= 2; i++) {
                 const angle = Math.atan2(dy, dx) + i * 0.2;
                 const __bId = Math.random();
-              state.readyQueue.push(__bId);
-              state.enemyBullets.push({
-                id: __bId,
-                W: 0,
-                S: 0.1,
-                hp: 1,
-                maxHp: 1,
-                priority: 2,
+                state.readyQueue.push(__bId);
+                state.enemyBullets.push({
+                  id: __bId,
+                  W: 0,
+                  S: 0.1,
+                  hp: 1,
+                  maxHp: 1,
+                  priority: 2,
                   x: e.x + Math.cos(angle) * e.radius,
                   y: e.y + Math.sin(angle) * e.radius,
                   vx: Math.cos(angle) * 250,
@@ -2283,14 +2519,14 @@ export function GameCanvas({
               for (let i = 0; i < 4; i++) {
                 const spiralAngle = e.rotationAngle + (Math.PI / 2) * i;
                 const __bId = Math.random();
-              state.readyQueue.push(__bId);
-              state.enemyBullets.push({
-                id: __bId,
-                W: 0,
-                S: 0.1,
-                hp: 1,
-                maxHp: 1,
-                priority: 2,
+                state.readyQueue.push(__bId);
+                state.enemyBullets.push({
+                  id: __bId,
+                  W: 0,
+                  S: 0.1,
+                  hp: 1,
+                  maxHp: 1,
+                  priority: 2,
                   x: e.x + Math.cos(spiralAngle) * e.radius,
                   y: e.y + Math.sin(spiralAngle) * e.radius,
                   vx: Math.cos(spiralAngle) * 250,
@@ -2310,14 +2546,14 @@ export function GameCanvas({
               for (let i = 0; i < 24; i++) {
                 const angle = ((Math.PI * 2) / 24) * i;
                 const __bId = Math.random();
-              state.readyQueue.push(__bId);
-              state.enemyBullets.push({
-                id: __bId,
-                W: 0,
-                S: 0.1,
-                hp: 1,
-                maxHp: 1,
-                priority: 2,
+                state.readyQueue.push(__bId);
+                state.enemyBullets.push({
+                  id: __bId,
+                  W: 0,
+                  S: 0.1,
+                  hp: 1,
+                  maxHp: 1,
+                  priority: 2,
                   x: e.x + Math.cos(angle) * e.radius,
                   y: e.y + Math.sin(angle) * e.radius,
                   vx: Math.cos(angle) * 150,
@@ -2342,14 +2578,14 @@ export function GameCanvas({
               for (let i = -spreadCount; i <= spreadCount; i++) {
                 const angle = Math.atan2(dy, dx) + i * 0.1;
                 const __bId = Math.random();
-              state.readyQueue.push(__bId);
-              state.enemyBullets.push({
-                id: __bId,
-                W: 0,
-                S: 0.1,
-                hp: 1,
-                maxHp: 1,
-                priority: 2,
+                state.readyQueue.push(__bId);
+                state.enemyBullets.push({
+                  id: __bId,
+                  W: 0,
+                  S: 0.1,
+                  hp: 1,
+                  maxHp: 1,
+                  priority: 2,
                   x: e.x + Math.cos(angle) * e.radius,
                   y: e.y + Math.sin(angle) * e.radius,
                   vx: Math.cos(angle) * 350 * Math.max(1, hrrnMultiplier * 0.5),
@@ -2398,14 +2634,14 @@ export function GameCanvas({
           if (e.shootTimer <= 0 && dist < 800) {
             const safeDist = Math.max(1, dist);
             const __bId = Math.random();
-              state.readyQueue.push(__bId);
-              state.enemyBullets.push({
-                id: __bId,
-                W: 0,
-                S: 0.1,
-                hp: 1,
-                maxHp: 1,
-                priority: 2,
+            state.readyQueue.push(__bId);
+            state.enemyBullets.push({
+              id: __bId,
+              W: 0,
+              S: 0.1,
+              hp: 1,
+              maxHp: 1,
+              priority: 2,
               x: e.x + (dx / safeDist) * e.radius,
               y: e.y + (dy / safeDist) * e.radius,
               vx: (dx / safeDist) * 250,
@@ -2434,6 +2670,8 @@ export function GameCanvas({
             } else {
               state.player.hp -= dmg;
               state.lastDamageSource = e ? e.type || "Enemy" : "Unknown";
+              state.screenShakeTimer = Math.max(state.screenShakeTimer, 0.4);
+              state.glitchTimer = Math.max(state.glitchTimer, 0.2);
             }
             if (state.player.hp <= 0 && playerRenderer)
               playerRenderer.triggerDestruction();
@@ -2457,6 +2695,8 @@ export function GameCanvas({
             } else {
               state.player.hp -= dmg;
               state.lastDamageSource = e ? e.type || "Enemy" : "Unknown";
+              state.screenShakeTimer = Math.max(state.screenShakeTimer, 0.1);
+              state.glitchTimer = Math.max(state.glitchTimer, 0.05);
             }
             // For continuous melee damage, we don't want to spam the sound too fast
             // We'll rely on the visual or trigger only occasionally.
@@ -2538,12 +2778,13 @@ export function GameCanvas({
           }
         }
 
-        // Toroidal wrapper for enemies
-        if (e.x < -e.radius) e.x = MAP_WIDTH + e.radius;
-        else if (e.x > MAP_WIDTH + e.radius) e.x = -e.radius;
-
-        if (e.y < -e.radius) e.y = MAP_HEIGHT + e.radius;
-        else if (e.y > MAP_HEIGHT + e.radius) e.y = -e.radius;
+        // If enemies drift WAY too far from the player (e.g. 3000px away), recycle them or teleport them closer
+        if (Math.hypot(e.x - state.player.x, e.y - state.player.y) > 3000) {
+          const spawnAngle = Math.random() * Math.PI * 2;
+          const spawnDist = 1200 + Math.random() * 500;
+          e.x = state.player.x + Math.cos(spawnAngle) * spawnDist;
+          e.y = state.player.y + Math.sin(spawnAngle) * spawnDist;
+        }
       });
 
       // Collisions
@@ -2576,7 +2817,7 @@ export function GameCanvas({
             } else if (b.isDrone) {
               if (state.currentAlgo === "FCFS") hitColor = "#3b82f6";
               else if (state.currentAlgo === "RR") hitColor = "#10b981";
-              else if (state.currentAlgo === "HRRN") hitColor = "#f43f5e";
+              else if (state.currentAlgo === "HRRN") hitColor = "#EF4444";
             }
 
             for (let i = 0; i < 6; i++) {
@@ -2601,7 +2842,7 @@ export function GameCanvas({
                 maxLife: 0.25,
                 color: hitColor,
                 text: "LASER_FLARE",
-                angle: Math.random() * Math.PI
+                angle: Math.random() * Math.PI,
               });
               for (let i = 0; i < 3; i++) {
                 state.particles.push({
@@ -2942,7 +3183,7 @@ export function GameCanvas({
         d.y += d.vy * dt;
         d.life -= dt;
       });
-      // state.damageNumbers = state.damageNumbers.filter((d: any) => d.life > 0);
+      state.damageNumbers = state.damageNumbers.filter((d: any) => d.life > 0);
       let scoreGained = 0;
       state.enemies = state.enemies.filter((e) => {
         if (e.hp <= 0) {
@@ -2967,6 +3208,31 @@ export function GameCanvas({
                 ? 50
                 : 150
               : 15;
+
+            // Permanent environmental scars for large enemies and heavy combat
+            if (
+              e.type.startsWith("boss") ||
+              ["tank", "turret"].includes(e.type)
+            ) {
+              const numScars = e.type.startsWith("boss") ? 5 : 1;
+              for (let i = 0; i < numScars; i++) {
+                state.scars.push({
+                  x: e.x + (Math.random() - 0.5) * 80,
+                  y: e.y + (Math.random() - 0.5) * 80,
+                  size: Math.random() * 40 + 20,
+                  rotation: Math.random() * Math.PI * 2,
+                });
+              }
+              if (e.type.startsWith("boss")) {
+                state.osMessages.push({
+                  text: "BOSS TARGET ELIMINATED",
+                  life: 4.0,
+                });
+                if ((soundManager as any).playSystemBlip)
+                  (soundManager as any).playSystemBlip();
+              }
+            }
+
             for (let i = 0; i < deathParticleCount; i++) {
               const isMassive = e.type !== "boss" && e.type.startsWith("boss");
               state.particles.push({
@@ -2991,7 +3257,7 @@ export function GameCanvas({
                   ? "#ec4899"
                   : e.type === "tank"
                     ? "#ef4444"
-                    : "#f43f5e",
+                    : "#EF4444",
               });
             }
             if (Math.random() < 0.45) {
@@ -3047,12 +3313,11 @@ export function GameCanvas({
       // Collectibles
       state.collectibles.forEach((c: any) => {
         c.life -= dt;
-        
-        // Wrap logic
-        if (c.x < -20) c.x = MAP_WIDTH + 20;
-        else if (c.x > MAP_WIDTH + 20) c.x = -20;
-        if (c.y < -20) c.y = MAP_HEIGHT + 20;
-        else if (c.y > MAP_HEIGHT + 20) c.y = -20;
+
+        // Despawn early if it gets left extremely far behind
+        if (Math.hypot(c.x - state.player.x, c.y - state.player.y) > 4000) {
+          c.life = -1;
+        }
 
         if (c.life > 0) {
           const dist = Math.hypot(c.x - state.player.x, c.y - state.player.y);
@@ -3064,7 +3329,7 @@ export function GameCanvas({
                 state.player.hp + 25,
               );
             } else if (c.type === "ammo") {
-              state.player.ammo = Math.min(250, state.player.ammo + 50);
+              state.player.ammo = Math.min(100, state.player.ammo + 50);
             } else if (c.type === "shield") {
               state.player.shield = Math.min(100, state.player.shield + 50);
             } else if (c.type === "speed") {
@@ -3077,7 +3342,27 @@ export function GameCanvas({
             c.life = -1; // collect
             soundManager.playCollect(c.type);
 
-            let pColor = "#F59E0B"; // default ammo color
+            // System Reaction for collect
+            if (c.type === "health" && state.player.hp < state.player.maxHp) {
+              state.osMessages.push({
+                text: "HULL REPAIRS ACTIVE",
+                life: 2.0,
+              });
+            } else if (c.type === "shield") {
+              state.osMessages.push({
+                text: "SHIELDS RECHARGING",
+                life: 2.0,
+              });
+            } else if (c.type === "weapon") {
+              state.osMessages.push({
+                text: "OVERDRIVE ACTIVATED",
+                life: 2.0,
+              });
+              if ((soundManager as any).playSystemBlip)
+                (soundManager as any).playSystemBlip();
+            }
+
+            let pColor = "#00D9FF"; // default ammo/energy color
             if (c.type === "health") pColor = "#10b981";
             else if (c.type === "shield") pColor = "#3b82f6";
             else if (c.type === "speed") pColor = "#fbbf24";
@@ -3100,6 +3385,25 @@ export function GameCanvas({
       state.collectibles = state.collectibles.filter((c: any) => c.life > 0);
 
       // Update HUD safely
+      if (osMessagesRef.current) {
+        osMessagesRef.current.innerHTML = state.osMessages
+          .map(
+            (m: any) =>
+              `<div class="bg-[#00D9FF]/20/80 border-l-2 border-[#00D9FF] text-cyan-200 font-mono text-[10px] md:text-sm px-2 py-0.5 uppercase tracking-widest drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] shadow-lg animate-pulse" style="opacity: ${Math.min(1, m.life)}">${m.text}</div>`,
+          )
+          .join("");
+      }
+      if (containerRef.current) {
+        // Add a harsh red tint if in hazard zone
+        const hazardFilter = state.inHazardZone
+          ? " sepia(100%) hue-rotate(-50deg) saturate(300%) contrast(120%)"
+          : "";
+        containerRef.current.style.filter =
+          (state.glitchTimer > 0
+            ? "hue-rotate(90deg) contrast(150%) blur(2px)"
+            : "none") + hazardFilter;
+      }
+
       if (scoreRef.current)
         scoreRef.current.innerText = state.isPlayerInLeak
           ? generateGarbage(6)
@@ -3117,16 +3421,26 @@ export function GameCanvas({
       // Update Critical Low Health Vignette Overlay
       if (critVignetteRef.current) {
         if (
-          hpPercent <= 25 &&
+          (hpPercent <= 25 || state.inHazardZone) &&
           state.player.hp > 0 &&
           !state.isGameOver &&
           !state.isPlayerInLeak
         ) {
-          const pulse = Math.abs(Math.sin((state.elapsed || 0) * 5)); // 5 rad/s pulse
+          const pulse = Math.abs(
+            Math.sin((state.elapsed || 0) * (state.inHazardZone ? 10 : 5)),
+          ); // Faster pulse in hazard
           critVignetteRef.current.style.opacity = (
             pulse * 0.7 +
             0.3
           ).toString();
+
+          if (state.inHazardZone) {
+            critVignetteRef.current.style.background =
+              "radial-gradient(circle, transparent 40%, rgba(255, 0, 0, 0.6) 100%)";
+          } else {
+            critVignetteRef.current.style.background =
+              "radial-gradient(circle, transparent 50%, rgba(220, 38, 38, 0.4) 100%)";
+          }
         } else {
           critVignetteRef.current.style.opacity = "0";
         }
@@ -3169,12 +3483,12 @@ export function GameCanvas({
           "polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%)";
 
         wpn1Ref.current.style.clipPath = clipPoly;
-        wpn1Ref.current.className = `w-24 h-12 md:w-[100px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${is1 ? "bg-rose-950/80 border-2 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)] text-rose-400" : "bg-slate-900/60 border border-slate-700 text-slate-500"}`;
-        wpn1Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] font-black tracking-widest px-1.5 py-0.5 border-t border-b border-rose-500/50 bg-rose-950/80 drop-shadow-lg text-rose-100 uppercase">KINETIC</span><div class="absolute top-1 left-2 text-slate-400 text-[8px] md:text-[9px] z-10 font-bold drop-shadow-md">1</div>`;
+        wpn1Ref.current.className = `w-[110px] h-12 md:w-[120px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${is1 ? "bg-[#EF4444]/20/80 border-2 border-[#EF4444] shadow-[0_0_15px_rgba(244,63,94,0.4)] text-[#EF4444]" : "bg-[#0d1428]/60 border border-[#1e2b52] text-slate-500"}`;
+        wpn1Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] font-black tracking-wider px-1.5 py-0.5 border-t border-b border-[#EF4444]/50 bg-[#EF4444]/20/80 drop-shadow-lg text-rose-100 uppercase whitespace-nowrap">BLASTER</span><div class="absolute top-1 left-2 text-slate-400 text-[8px] md:text-[9px] z-10 font-bold drop-shadow-md">1</div>`;
 
         wpn2Ref.current.style.clipPath = clipPoly;
-        wpn2Ref.current.className = `w-24 h-12 md:w-[100px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${!is1 ? "bg-rose-950/80 border-2 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)] text-rose-400" : "bg-slate-900/60 border border-slate-700 text-slate-500"}`;
-        wpn2Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] font-black tracking-widest px-1.5 py-0.5 border-t border-b border-slate-500/50 bg-slate-950/80 drop-shadow-lg text-slate-100 uppercase">PLASMA</span><div class="absolute top-1 left-2 text-slate-400 text-[8px] md:text-[9px] z-10 font-bold drop-shadow-md">2</div>`;
+        wpn2Ref.current.className = `w-[110px] h-12 md:w-[120px] md:h-14 shrink-0 relative flex items-center justify-center font-mono text-sm md:text-base font-bold backdrop-blur-md transition-all ${!is1 ? "bg-[#EF4444]/20/80 border-2 border-[#EF4444] shadow-[0_0_15px_rgba(244,63,94,0.4)] text-[#EF4444]" : "bg-[#0d1428]/60 border border-[#1e2b52] text-slate-500"}`;
+        wpn2Ref.current.innerHTML = `<span class="z-10 text-[9px] md:text-[11px] text-center leading-tight font-black tracking-wider px-1.5 py-0.5 mt-2 border-t border-b border-slate-500/50 bg-[#0A0F1F]/80 drop-shadow-lg text-slate-100 uppercase">PLASMA<br/>CANNON</span><div class="absolute top-1 left-2 text-slate-400 text-[8px] md:text-[9px] z-10 font-bold drop-shadow-md">2</div>`;
       }
 
       if (dshRef.current) {
@@ -3184,21 +3498,21 @@ export function GameCanvas({
         dshRef.current.style.clipPath =
           "polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%)";
         let stateClass =
-          "bg-slate-900/80 border border-slate-700 text-slate-500";
+          "bg-[#0d1428]/80 border border-[#1e2b52] text-slate-500";
         if (isReady)
           stateClass =
-            "bg-slate-800/80 border border-slate-300 text-slate-200 shadow-[0_0_10px_rgba(255,255,255,0.2)]";
+            "bg-[#151f3d]/80 border border-slate-300 text-slate-200 shadow-[0_0_10px_rgba(255,255,255,0.2)]";
         else if (cd <= 0)
           stateClass =
-            "bg-red-950/40 border border-red-900 text-red-500 grayscale transition-colors duration-500 animate-pulse";
+            "bg-[#EF4444]/20/40 border border-red-900 text-[#EF4444] grayscale transition-colors duration-500 animate-pulse";
 
         dshRef.current.className = `w-14 h-12 md:w-[72px] md:h-14 shrink-0 relative flex flex-col items-center justify-center font-mono backdrop-blur-md transition-all duration-300 ${stateClass}`;
 
         let cdOverlay = "";
         if (cd > 0)
-          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-slate-950/50 text-white font-bold text-sm backdrop-blur-sm">${cd.toFixed(1)}s</span>`;
+          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-[#0A0F1F]/50 text-white font-bold text-sm backdrop-blur-sm">${cd.toFixed(1)}s</span>`;
         else if (!isReady)
-          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-red-950/70 text-[8px] md:text-[10px] text-red-400 leading-tight text-center font-bold">NO<br/>STM</span>`;
+          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-[#EF4444]/20/70 text-[8px] md:text-[10px] text-red-400 leading-tight text-center font-bold">NO<br/>STM</span>`;
 
         dshRef.current.innerHTML = `
              <div class="absolute inset-0 overflow-hidden outline-none pointer-events-none">
@@ -3217,21 +3531,21 @@ export function GameCanvas({
         shdSkillRef.current.style.clipPath =
           "polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%)";
         let stateClass =
-          "bg-slate-900/80 border border-slate-700 text-slate-500";
+          "bg-[#0d1428]/80 border border-[#1e2b52] text-slate-500";
         if (isReady)
           stateClass =
             "bg-blue-950/80 border-2 border-blue-400 text-blue-300 shadow-[0_0_15px_rgba(96,165,250,0.4)]";
         else if (cd <= 0)
           stateClass =
-            "bg-red-950/40 border border-red-900 text-red-500 grayscale transition-colors duration-500 animate-pulse";
+            "bg-[#EF4444]/20/40 border border-red-900 text-[#EF4444] grayscale transition-colors duration-500 animate-pulse";
 
         shdSkillRef.current.className = `w-18 h-12 md:w-[84px] md:h-14 shrink-0 relative flex flex-col items-center justify-center font-mono backdrop-blur-md transition-all duration-300 ${stateClass}`;
 
         let cdOverlay = "";
         if (cd > 0)
-          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-slate-950/50 text-white font-bold text-sm md:text-base backdrop-blur-sm">${cd.toFixed(1)}s</span>`;
+          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-[#0A0F1F]/50 text-white font-bold text-sm md:text-base backdrop-blur-sm">${cd.toFixed(1)}s</span>`;
         else if (!isReady)
-          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-red-950/70 text-[8px] md:text-[10px] text-red-400 leading-tight text-center font-bold">NO<br/>STM</span>`;
+          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-[#EF4444]/20/70 text-[8px] md:text-[10px] text-red-400 leading-tight text-center font-bold">NO<br/>STM</span>`;
 
         shdSkillRef.current.innerHTML = `
              <div class="absolute inset-0 overflow-hidden outline-none pointer-events-none">
@@ -3256,7 +3570,7 @@ export function GameCanvas({
         ocSkillRef.current.style.clipPath =
           "polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%)";
         let stateClass =
-          "bg-slate-900/80 border border-slate-700 text-slate-500";
+          "bg-[#0d1428]/80 border border-[#1e2b52] text-slate-500";
         if (isActive)
           stateClass =
             "bg-fuchsia-950/80 border-2 border-fuchsia-400 text-fuchsia-300 shadow-[0_0_20px_rgba(217,70,239,0.7)] animate-pulse";
@@ -3268,7 +3582,7 @@ export function GameCanvas({
 
         let cdOverlay = "";
         if (cd > 0)
-          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-slate-950/50 text-white font-bold text-sm md:text-base backdrop-blur-sm">${cd.toFixed(0)}s</span>`;
+          cdOverlay = `<span class="z-20 absolute inset-0 flex items-center justify-center bg-[#0A0F1F]/50 text-white font-bold text-sm md:text-base backdrop-blur-sm">${cd.toFixed(0)}s</span>`;
 
         ocSkillRef.current.innerHTML = `
              <div class="absolute inset-0 overflow-hidden outline-none pointer-events-none">
@@ -3302,7 +3616,7 @@ export function GameCanvas({
 
         soundManager.stopBGM();
         soundManager.setLowRamEffect(false);
-        onGameOverRef.current(state.score);
+        onGameOverRef.current(state.score, false, snapshot.causeOfDeath);
       }
 
       // 6. Drone Auto-Turret (CPU Scheduling mechanism visualization)
@@ -3313,14 +3627,15 @@ export function GameCanvas({
         drone.fireTimer -= dt;
 
         if (drone.targetId !== null) {
-          const target = state.enemies.find((e: any) => e.id === drone.targetId) || state.enemyBullets.find((b: any) => b.id === drone.targetId && b.life > 0);
+          const target =
+            state.enemies.find((e: any) => e.id === drone.targetId) ||
+            state.enemyBullets.find(
+              (b: any) => b.id === drone.targetId && b.life > 0,
+            );
           if (target) {
-            // Calculate literal drone positions
-            const distance = 80; // Orbit radius
-            const droneX =
-              state.player.x + Math.cos(drone.orbitAngle) * distance;
-            const droneY =
-              state.player.y + Math.sin(drone.orbitAngle) * distance;
+            // Fetch real drone positions derived by OS-Scheduling behavior
+            const droneX = drone.x || state.player.x;
+            const droneY = drone.y || state.player.y;
 
             const dx = target.x - droneX;
             const dy = target.y - droneY;
@@ -3328,51 +3643,52 @@ export function GameCanvas({
             if (dist < droneRangeRef.current) {
               // Apply continuous laser damage
               let ocActive = state.overclockTimer > 0;
-              const damageMult = (ocActive ? 1.0 : 0.5) * state.player.damageMult;
-              const dmgPerSec = 34 * (ocActive ? 20 : 5) * damageMult; 
-              
+              const damageMult =
+                (ocActive ? 1.0 : 0.5) * state.player.damageMult;
+              const dmgPerSec = 34 * (ocActive ? 20 : 5) * damageMult;
+
               target.hp -= dmgPerSec * dt;
-              
+
               if (target.hp <= 0) {
-                 if (target.renderer) target.renderer.triggerDestruction();
-                 else target.life = -1; // It's a bullet!
+                if (target.renderer) target.renderer.triggerDestruction();
+                else target.life = -1; // It's a bullet!
               } else if (target.renderer) {
-                 target.renderer.triggerShield();
+                target.renderer.triggerShield();
               }
 
               target.flashTimer = 0.1;
 
               // Occasionally pop damage numbers to give feedback
               if (drone.fireTimer <= 0) {
-                 const isCrit = Math.random() < 0.25;
-                 const dmgPop = 34 * damageMult * (isCrit ? 2.5 : 1.0);
-                 const tRadius = target.radius || 8;
-                 state.damageNumbers.push({
-                   x: target.x + (Math.random() - 0.5) * 20,
-                   y: target.y - tRadius - 10 + (Math.random() - 0.5) * 20,
-                   amount: Math.ceil(dmgPop),
-                   life: 1.0,
-                   vy: -30,
-                   isCrit,
-                   text: !target.renderer && isCrit ? "INTERCEPTED!" : undefined,
-                 });
-                 drone.fireTimer = state.overclockTimer > 0 ? 0.05 : 0.2; 
-                 // Create particle sparks at the hit point
-                 for(let i=0; i<3; i++) {
-                   const sparkColor = ocActive ? "#fff" : "#00D9FF";
-                   state.particles.push({
-                     x: target.x + (Math.random() - 0.5) * tRadius,
-                     y: target.y + (Math.random() - 0.5) * tRadius,
-                     vx: (Math.random() - 0.5) * 100,
-                     vy: (Math.random() - 0.5) * 100,
-                     life: 0.2 + Math.random() * 0.2,
-                     maxLife: 0.4,
-                     radius: Math.random() * 2 + 1,
-                     color: sparkColor,
-                     isDebris: false,
-                     shape: "rect",
-                   });
-                 }
+                const isCrit = Math.random() < 0.25;
+                const dmgPop = 34 * damageMult * (isCrit ? 2.5 : 1.0);
+                const tRadius = target.radius || 8;
+                state.damageNumbers.push({
+                  x: target.x + (Math.random() - 0.5) * 20,
+                  y: target.y - tRadius - 10 + (Math.random() - 0.5) * 20,
+                  amount: Math.ceil(dmgPop),
+                  life: 1.0,
+                  vy: -30,
+                  isCrit,
+                  text: !target.renderer && isCrit ? "INTERCEPTED!" : undefined,
+                });
+                drone.fireTimer = state.overclockTimer > 0 ? 0.05 : 0.2;
+                // Create particle sparks at the hit point
+                for (let i = 0; i < 3; i++) {
+                  const sparkColor = ocActive ? "#fff" : "#00D9FF";
+                  state.particles.push({
+                    x: target.x + (Math.random() - 0.5) * tRadius,
+                    y: target.y + (Math.random() - 0.5) * tRadius,
+                    vx: (Math.random() - 0.5) * 100,
+                    vy: (Math.random() - 0.5) * 100,
+                    life: 0.2 + Math.random() * 0.2,
+                    maxLife: 0.4,
+                    radius: Math.random() * 2 + 1,
+                    color: sparkColor,
+                    isDebris: false,
+                    shape: "rect",
+                  });
+                }
               }
             }
           }
@@ -3407,7 +3723,7 @@ export function GameCanvas({
       state: any,
       cameraX: number,
       cameraY: number,
-      dt: number
+      dt: number,
     ) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const zoom = state.currentZoom || 1.0;
@@ -3433,9 +3749,27 @@ export function GameCanvas({
       ctx.fillStyle = "#03050a"; // darker void
       ctx.fillRect(cameraX, cameraY, effW, effH);
 
-      // Playable area background (space)
+      // Playable area background (space) safe zone
       ctx.fillStyle = "#070a14"; // very dark blue space
       ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+      // Hazard Zone Warning Borders
+      ctx.strokeStyle = "rgba(239, 68, 68, 0.4)"; // Red glowing border
+      ctx.lineWidth = 10;
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = "rgba(239, 68, 68, 0.8)";
+      ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+      ctx.strokeStyle = "rgba(239, 68, 68, 0.1)"; // Faded outer border
+      ctx.lineWidth = 50;
+      ctx.shadowBlur = 0;
+      ctx.strokeRect(-25, -25, MAP_WIDTH + 50, MAP_HEIGHT + 50);
+
+      // If in hazard zone, render an overlay pulse just on the safe zone to make it look active
+      if (state.inHazardZone) {
+        ctx.fillStyle = "rgba(239, 68, 68, 0.05)";
+        ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+      }
 
       const now = performance.now() / 1000;
 
@@ -3529,6 +3863,38 @@ export function GameCanvas({
         }
       });
 
+      // Environmental Scars (Debris from dead massive entities)
+      state.scars.forEach((scar: any) => {
+        if (
+          scar.x < cameraX - scar.size ||
+          scar.x > cameraX + effW + scar.size ||
+          scar.y < cameraY - scar.size ||
+          scar.y > cameraY + effH + scar.size
+        )
+          return; // cull offscreen
+        ctx.save();
+        ctx.translate(scar.x, scar.y);
+        ctx.rotate(scar.rotation);
+
+        ctx.fillStyle = "rgba(40, 45, 55, 0.4)";
+        ctx.fillRect(-scar.size / 2, -scar.size / 2, scar.size, scar.size);
+
+        // Add random scorched marks to the scar
+        ctx.fillStyle = "rgba(10, 15, 31, 0.8)";
+        ctx.fillRect(
+          -scar.size / 4,
+          -scar.size / 4,
+          scar.size / 2,
+          scar.size / 2,
+        );
+
+        ctx.strokeStyle = "rgba(10, 15, 31, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-scar.size / 2, -scar.size / 2, scar.size, scar.size);
+
+        ctx.restore();
+      });
+
       // Asteroids
       state.asteroids.forEach((a: any) => {
         // Cull offscreen
@@ -3615,7 +3981,7 @@ export function GameCanvas({
         // Kla'ed Energy Crystals embedded in some asteroids
         if (a.id % 3 === 0 || a.id % 7 === 0) {
           const isRose = a.id % 3 === 0;
-          ctx.fillStyle = isRose ? "#f43f5e" : "#8b5cf6"; // Rose or Purple crystals
+          ctx.fillStyle = isRose ? "#EF4444" : "#6366F1"; // Rose or Purple crystals
           ctx.shadowBlur = 15;
           ctx.shadowColor = ctx.fillStyle;
 
@@ -3652,7 +4018,7 @@ export function GameCanvas({
 
           ctx.fillStyle = "rgba(244, 63, 94, 0.8)"; // Rose color for hazard HP
           ctx.shadowBlur = 8;
-          ctx.shadowColor = "#f43f5e";
+          ctx.shadowColor = "#EF4444";
           ctx.fillRect(-barW / 2, yOff, barW * (a.hp / maxHp), 4);
           ctx.shadowBlur = 0;
         }
@@ -3795,14 +4161,16 @@ export function GameCanvas({
 
       // Enemies
       const currentWave = Math.floor(state.diffTimer / 60) + 1;
-      let hasMalwareRender = state.enemies.some((e: any) => e.type === "malware");
+      let hasMalwareRender = state.enemies.some(
+        (e: any) => e.type === "malware",
+      );
       let currentActiveAlgoRender = hasMalwareRender
         ? ("FCFS" as SchedulerAlgo)
         : (state.currentAlgo as SchedulerAlgo);
 
       let cfg = { algo: currentActiveAlgoRender, cores: 2, quantum: 0.5 };
       if (currentWave === 2) {
-        cfg.cores = 3; 
+        cfg.cores = 3;
         cfg.quantum = 0.8;
       } else if (currentWave === 3) {
         cfg.cores = 4;
@@ -3811,7 +4179,7 @@ export function GameCanvas({
         cfg.cores = Math.min(8, 3 + Math.floor((currentWave - 4) / 2));
         cfg.quantum = 0.5;
       }
-      
+
       if (state.overclockTimer > 0) {
         cfg.cores = Math.min(12, cfg.cores + 4);
       }
@@ -3847,7 +4215,7 @@ export function GameCanvas({
               -Math.PI / 2,
               -Math.PI / 2 + Math.PI * 2 * ratio,
             );
-            ctx.strokeStyle = "#f43f5e"; // Rose
+            ctx.strokeStyle = "#EF4444"; // Rose
             ctx.lineWidth = 3;
             ctx.stroke();
           }
@@ -3971,11 +4339,17 @@ export function GameCanvas({
         }
 
         // HRRN / Priority Queue Indicator
-        if (!isDroneTarget && e.spawnScale >= 1) {
+        const inReadyQueue = state.readyQueue.includes(e.id);
+        if (
+          showSchedulingIndicatorsRef.current &&
+          !isDroneTarget &&
+          e.spawnScale >= 1 &&
+          inReadyQueue
+        ) {
           const pMult = e.priority || 1;
           if (cfg.algo === "HRRN") {
             const R = ((e.W + e.S) / Math.max(0.1, e.S)) * pMult;
-            ctx.fillStyle = pMult > 1 ? "#f43f5e" : "#fbbf24";
+            ctx.fillStyle = pMult > 1 ? "#EF4444" : "#fbbf24";
             ctx.font = pMult > 1 ? "bold 10px monospace" : "8px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -3986,7 +4360,7 @@ export function GameCanvas({
             );
           } else if (cfg.algo === "FCFS") {
             // FCFS Wait Time
-            ctx.fillStyle = pMult > 1 ? "#f43f5e" : "#94a3b8";
+            ctx.fillStyle = pMult > 1 ? "#EF4444" : "#94a3b8";
             ctx.font = pMult > 1 ? "bold 10px monospace" : "8px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -3997,12 +4371,18 @@ export function GameCanvas({
               0,
               e.radius + 14,
             );
-          } else if (cfg.algo === "RR" && pMult > 1) {
-            ctx.fillStyle = "#f43f5e";
-            ctx.font = "bold 10px monospace";
+          } else if (cfg.algo === "RR") {
+            ctx.fillStyle = pMult > 1 ? "#EF4444" : "#6366F1";
+            ctx.font = pMult > 1 ? "bold 10px monospace" : "8px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(`! PRIORITY !`, 0, e.radius + 14);
+            ctx.fillText(
+              pMult > 1
+                ? `! Q:${Math.floor(e.W * pMult)}s !`
+                : `Q:${Math.floor(e.W)}s`,
+              0,
+              e.radius + 14,
+            );
           }
         }
 
@@ -4036,36 +4416,7 @@ export function GameCanvas({
 
       // Queue Sorting Visualization removed for cleaner battlefield
 
-
-      // OS Messages
-      state.osMessages.forEach((msg: any) => {
-        if (msg.life <= 0) return;
-        ctx.save();
-        ctx.translate(msg.x, msg.y);
-        
-        let alpha = 1.0;
-        if (msg.life > 7.0) {
-            alpha = 8.0 - msg.life; // Fade in
-        } else if (msg.life < 1.0) {
-            alpha = msg.life; // Fade out
-        }
-
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.7)); // Max 0.7 alpha so it looks ghostly
-        ctx.fillStyle = "#38bdf8"; // Cyan
-        ctx.font = "italic 16px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.shadowColor = "#0ea5e9";
-        ctx.shadowBlur = 10;
-        
-        // Add a slight glitch effect occasionally
-        let xOff = 0;
-        if (Math.random() < 0.05) xOff = (Math.random() - 0.5) * 5;
-        
-        ctx.fillText(msg.text, xOff, 0);
-        ctx.restore();
-        msg.life -= dt;
-      });
+      // OS Messages handled in JSX HUD
 
       // Damage Numbers
       state.damageNumbers.forEach((d: any) => {
@@ -4104,7 +4455,7 @@ export function GameCanvas({
           ctx.fillStyle = d.color;
         } else if (d.isCrit) {
           // Cyan or Red based on time to make it flash
-          ctx.fillStyle = Math.floor(t * 15) % 2 === 0 ? "#06b6d4" : "#ef4444"; // Cyan and Red flash
+          ctx.fillStyle = Math.floor(t * 15) % 2 === 0 ? "#00D9FF" : "#ef4444"; // Cyan and Red flash
         } else {
           ctx.fillStyle = "#facc15"; // yellow text
         }
@@ -4160,9 +4511,14 @@ export function GameCanvas({
       // Render Auto-Target Drones (Cores)
       // Drones
       state.drones.forEach((drone: any) => {
-        const dist = 80;
-        const dx = Math.cos(drone.orbitAngle) * dist;
-        const dy = Math.sin(drone.orbitAngle) * dist;
+        const dx =
+          drone.x !== undefined
+            ? drone.x - state.player.x
+            : Math.cos(drone.orbitAngle) * 80;
+        const dy =
+          drone.y !== undefined
+            ? drone.y - state.player.y
+            : Math.sin(drone.orbitAngle) * 80;
 
         let droneColor = "#38bdf8";
         let shadowColor = "#0ea5e9";
@@ -4173,16 +4529,22 @@ export function GameCanvas({
           droneColor = "#10b981";
           shadowColor = "#059669";
         } else if (state.currentAlgo === "HRRN") {
-          droneColor = "#f43f5e";
+          droneColor = "#EF4444";
           shadowColor = "#e11d48";
         }
 
         // Draw Drone Trail
         if (drone.trail && drone.trail.length > 1) {
           ctx.beginPath();
-          ctx.moveTo(drone.trail[0].x - state.player.x, drone.trail[0].y - state.player.y);
+          ctx.moveTo(
+            drone.trail[0].x - state.player.x,
+            drone.trail[0].y - state.player.y,
+          );
           for (let i = 1; i < drone.trail.length; i++) {
-            ctx.lineTo(drone.trail[i].x - state.player.x, drone.trail[i].y - state.player.y);
+            ctx.lineTo(
+              drone.trail[i].x - state.player.x,
+              drone.trail[i].y - state.player.y,
+            );
           }
           // Also connect to current pos
           ctx.lineTo(dx, dy);
@@ -4192,8 +4554,10 @@ export function GameCanvas({
           ctx.shadowColor = droneColor;
           // Fade trail towards its tail
           const grad = ctx.createLinearGradient(
-            drone.trail[0].x - state.player.x, drone.trail[0].y - state.player.y,
-            dx, dy
+            drone.trail[0].x - state.player.x,
+            drone.trail[0].y - state.player.y,
+            dx,
+            dy,
           );
           grad.addColorStop(0, "transparent");
           grad.addColorStop(1, droneColor);
@@ -4205,7 +4569,7 @@ export function GameCanvas({
         // Draw drone body
         ctx.beginPath();
         ctx.arc(dx, dy, 6, 0, Math.PI * 2);
-        
+
         if (drone.targetId !== null) {
           ctx.shadowBlur = 15;
         } else {
@@ -4218,33 +4582,71 @@ export function GameCanvas({
 
         // Draw drone laser pointer to target
         if (drone.targetId !== null) {
-          const target = state.enemies.find((e: any) => e.id === drone.targetId) || state.enemyBullets.find((b: any) => b.id === drone.targetId && b.life > 0);
+          const target =
+            state.enemies.find((e: any) => e.id === drone.targetId) ||
+            state.enemyBullets.find(
+              (b: any) => b.id === drone.targetId && b.life > 0,
+            );
           if (target) {
-            ctx.beginPath();
-            ctx.moveTo(dx, dy);
-            ctx.lineTo(target.x - state.player.x, target.y - state.player.y);
-            
-            // Continuous thick laser drawing
-            ctx.strokeStyle = droneColor;
-            ctx.lineWidth = state.overclockTimer > 0 ? 6 : 3;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = droneColor;
-            
+            const targetX = target.x - state.player.x;
+            const targetY = target.y - state.player.y;
+
             // Add jitter to make it look energetic
             const jitterX = (Math.random() - 0.5) * 4;
             const jitterY = (Math.random() - 0.5) * 4;
-            ctx.lineTo((target.x - state.player.x) + jitterX, (target.y - state.player.y) + jitterY);
-            
-            ctx.stroke();
-            
-            // Inner Core
+            const finalHitX = targetX + jitterX;
+            const finalHitY = targetY + jitterY;
+
             ctx.beginPath();
             ctx.moveTo(dx, dy);
-            ctx.lineTo(target.x - state.player.x, target.y - state.player.y);
+            ctx.lineTo(finalHitX, finalHitY);
+
+            // Continuous thick laser drawing
+            ctx.strokeStyle = droneColor;
+            ctx.lineWidth = state.overclockTimer > 0 ? 6 : 3;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = droneColor;
+            ctx.stroke();
+
+            // Inner Core with blooming
+            ctx.beginPath();
+            ctx.moveTo(dx, dy);
+            ctx.lineTo(finalHitX, finalHitY);
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = state.overclockTimer > 0 ? 3 : 1;
-            ctx.shadowBlur = 0;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ffffff";
             ctx.stroke();
+
+            // Impact effect / bright white flare at the endpoint
+            ctx.beginPath();
+            ctx.arc(
+              finalHitX,
+              finalHitY,
+              state.overclockTimer > 0 ? 8 : 4,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = droneColor;
+            ctx.fill();
+
+            // Draw a second smaller spark core for the flare
+            ctx.beginPath();
+            ctx.arc(
+              finalHitX,
+              finalHitY,
+              state.overclockTimer > 0 ? 4 : 2,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ffffff";
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
           }
         }
       });
@@ -4376,7 +4778,7 @@ export function GameCanvas({
           ctx.shadowColor = "#a855f7";
           ctx.shadowBlur = 10;
         } else {
-          ctx.fillStyle = "#F59E0B"; // Amber / Ammo
+          ctx.fillStyle = "#00D9FF"; // Cyan / Energy
           ctx.fillRect(-8, -6, 16, 12);
           ctx.strokeStyle = "#fff";
           ctx.lineWidth = 2;
@@ -4387,7 +4789,7 @@ export function GameCanvas({
           ctx.moveTo(4, -6);
           ctx.lineTo(4, 6);
           ctx.stroke();
-          ctx.shadowColor = "#F59E0B";
+          ctx.shadowColor = "#00D9FF";
           ctx.shadowBlur = 10;
         }
         ctx.restore();
@@ -4413,7 +4815,7 @@ export function GameCanvas({
           } else if (b.isDrone) {
             if (state.currentAlgo === "FCFS") dColor = "#3b82f6";
             else if (state.currentAlgo === "RR") dColor = "#10b981";
-            else if (state.currentAlgo === "HRRN") dColor = "#f43f5e";
+            else if (state.currentAlgo === "HRRN") dColor = "#EF4444";
           }
           ctx.translate(b.x, b.y);
           ctx.rotate(Math.atan2(b.vy, b.vx));
@@ -4478,7 +4880,7 @@ export function GameCanvas({
             w = 24;
             h = 24;
             blur = 15;
-            color = "#8b5cf6";
+            color = "#6366F1";
           } else if (b.bulletType === "boss_focused") {
             w = 56;
             h = 56;
@@ -4651,7 +5053,7 @@ export function GameCanvas({
           ctx.strokeStyle = p.color;
           ctx.lineWidth = 4 * (p.life / (p.maxLife || 0.25));
           ctx.stroke();
-          
+
           ctx.shadowBlur = 0;
           ctx.beginPath();
           ctx.arc(0, 0, p.life * 20, 0, Math.PI * 2);
@@ -4807,27 +5209,72 @@ export function GameCanvas({
         mCtx.strokeRect(smx, smy, smw, smh);
         mCtx.setLineDash([]);
 
-        // Dynamic Sweeping Radar Beam
+        const px = (state.player.x / MAP_WIDTH) * mCanvas.width;
+        const py = (state.player.y / MAP_HEIGHT) * mCanvas.height;
+
+        // Dynamic Sweeping Radar Beam pivoting from Player
         const sweepAngle = (now * 2.5) % (Math.PI * 2);
-        const mxCenter = mCanvas.width / 2;
-        const myCenter = mCanvas.height / 2;
-        const radius = mCanvas.width * 0.8;
+        const radius = mCanvas.width * 2;
 
         mCtx.save();
-        mCtx.translate(mxCenter, myCenter);
-        mCtx.rotate(sweepAngle);
 
-        const radarGrad = mCtx.createConicGradient(0, 0, 0);
-        radarGrad.addColorStop(0, "rgba(6, 182, 212, 0.4)");
-        radarGrad.addColorStop(0.1, "rgba(6, 182, 212, 0)");
-        radarGrad.addColorStop(1, "rgba(6, 182, 212, 0)");
+        // Use createConicGradient with the sweepAngle, centered at the player
+        if (typeof mCtx.createConicGradient === "function") {
+          const radarGrad = mCtx.createConicGradient(sweepAngle, px, py);
+          radarGrad.addColorStop(0, "rgba(6, 182, 212, 0.4)");
+          radarGrad.addColorStop(0.1, "rgba(6, 182, 212, 0)");
+          radarGrad.addColorStop(1, "rgba(6, 182, 212, 0)");
 
-        mCtx.fillStyle = radarGrad;
-        mCtx.beginPath();
-        mCtx.moveTo(0, 0);
-        mCtx.arc(0, 0, radius, 0, Math.PI / 2);
-        mCtx.fill();
+          mCtx.fillStyle = radarGrad;
+          mCtx.beginPath();
+          mCtx.moveTo(px, py);
+          mCtx.arc(px, py, radius, sweepAngle, sweepAngle + Math.PI / 2);
+          mCtx.fill();
+        } else {
+          // Fallback for browsers without conic gradient
+          mCtx.fillStyle = "rgba(6, 182, 212, 0.2)";
+          mCtx.beginPath();
+          mCtx.moveTo(px, py);
+          mCtx.arc(px, py, radius, sweepAngle, sweepAngle + Math.PI / 2);
+          mCtx.fill();
+        }
+
         mCtx.restore();
+
+        // Draw Hazard Zones (Anomalies)
+        (state.anomalies || []).forEach((ano: any) => {
+          const ax = (ano.x / MAP_WIDTH) * mCanvas.width;
+          const ay = (ano.y / MAP_HEIGHT) * mCanvas.height;
+          const ar =
+            (ano.r / Math.max(MAP_WIDTH, MAP_HEIGHT)) *
+            Math.max(mCanvas.width, mCanvas.height);
+
+          mCtx.fillStyle =
+            ano.type === "black_hole"
+              ? "rgba(139, 92, 246, 0.3)"
+              : "rgba(245, 158, 11, 0.3)";
+          mCtx.strokeStyle = ano.type === "black_hole" ? "#a78bfa" : "#fbbf24";
+          mCtx.lineWidth = 1;
+
+          mCtx.beginPath();
+          mCtx.arc(ax, ay, Math.max(ar, 2), 0, Math.PI * 2);
+          mCtx.fill();
+          mCtx.stroke();
+
+          // Pulsing hazard indicator
+          if (ano.type === "black_hole") {
+            mCtx.beginPath();
+            mCtx.arc(
+              ax,
+              ay,
+              Math.max(ar, 2) + Math.sin(now * 8) * 3,
+              0,
+              Math.PI * 2,
+            );
+            mCtx.strokeStyle = "rgba(139, 92, 246, 0.5)";
+            mCtx.stroke();
+          }
+        });
 
         // Draw Enemies (Red/Rose Blips)
         state.enemies.forEach((e: any) => {
@@ -4841,7 +5288,7 @@ export function GameCanvas({
             ? "#00D9FF"
             : isBoss
               ? "#ec4899"
-              : "#f43f5e";
+              : "#EF4444";
           mCtx.shadowBlur = isActive || isBoss ? 10 : 4;
           mCtx.shadowColor = mCtx.fillStyle;
 
@@ -4859,11 +5306,11 @@ export function GameCanvas({
           }
         });
 
-        // Collectibles (Amber/Green/Blue Blips)
+        // Collectibles
         state.collectibles.forEach((c: any) => {
           const cx = (c.x / MAP_WIDTH) * mCanvas.width;
           const cy = (c.y / MAP_HEIGHT) * mCanvas.height;
-          let mColor = "#F59E0B"; // Ammo
+          let mColor = "#00D9FF"; // Energy
           if (c.type === "health") mColor = "#10b981";
           else if (c.type === "shield") mColor = "#3b82f6";
           else if (c.type === "weapon") mColor = "#dc2626";
@@ -4876,11 +5323,9 @@ export function GameCanvas({
         });
 
         // Draw Player (Bright Cyan Core)
-        const px = (state.player.x / MAP_WIDTH) * mCanvas.width;
-        const py = (state.player.y / MAP_HEIGHT) * mCanvas.height;
         mCtx.fillStyle = "#ffffff";
         mCtx.shadowBlur = 12;
-        mCtx.shadowColor = "#22d3ee"; // Cyan glow
+        mCtx.shadowColor = "#00D9FF"; // Cyan glow
         mCtx.beginPath();
         mCtx.arc(px, py, 2.5, 0, Math.PI * 2);
         mCtx.fill();
@@ -4925,16 +5370,17 @@ export function GameCanvas({
       window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("mouseup", handleMouseUp);
-      
+
       soundManager.stopBGM();
       soundManager.setLowRamEffect(false);
+      soundManager.ctx?.resume();
     };
   }, [gameKey]);
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-[#0A0F1F] overflow-hidden font-sans select-none border border-cyan-900/50 shadow-[inset_0_0_50px_rgba(6,182,212,0.05)]"
+      className="relative w-full h-full bg-[#0A0F1F] overflow-hidden font-sans select-none border border-[#00D9FF]/20 shadow-[inset_0_0_50px_rgba(6,182,212,0.05)]"
     >
       {/* Tactical Grid Overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(6,182,212,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.2)_1px,transparent_1px)] bg-[size:40px_40px] z-0"></div>
@@ -4945,26 +5391,26 @@ export function GameCanvas({
         style={{ transform: `scale(${uiScale})` }}
       >
         <div
-          className="bg-slate-900/80 p-3 border border-cyan-900/50 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.15)] relative overflow-hidden"
+          className="bg-[#0d1428]/80 p-3 border border-[#00D9FF]/20 backdrop-blur-md shadow-[0_0_20px_rgba(0,217,255,0.15)] relative overflow-hidden"
           style={{ clipPath: "polygon(0 0, 100% 0, 95% 100%, 0% 100%)" }}
         >
           <div
-            className="absolute top-0 right-0 w-4 h-4 bg-cyan-500/20"
+            className="absolute top-0 right-0 w-4 h-4 bg-[#00D9FF]/20"
             style={{ clipPath: "polygon(100% 0, 0 0, 100% 100%)" }}
           ></div>
 
           <div className="flex justify-between items-end mb-1">
-            <span className="text-[10px] text-cyan-500 font-mono font-bold tracking-[0.2em]">
-              ARMOR
+            <span className="text-[10px] text-[#00D9FF] font-mono font-bold tracking-[0.2em]">
+              HULL
             </span>
             <span className="text-xs text-white font-mono" ref={hpTextRef}>
               100%
             </span>
           </div>
-          <div className="w-full h-1.5 bg-slate-800">
+          <div className="w-full h-1.5 bg-[#151f3d]">
             <div
               ref={hpRef}
-              className="h-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] transition-all"
+              className="h-full bg-[#00D9FF] shadow-[0_0_8px_#00D9FF] transition-all"
             ></div>
           </div>
 
@@ -4976,7 +5422,7 @@ export function GameCanvas({
               0%
             </span>
           </div>
-          <div className="w-full h-1 bg-slate-800">
+          <div className="w-full h-1 bg-[#151f3d]">
             <div
               ref={shieldRef}
               className="h-full bg-blue-500 shadow-[0_0_8px_#3b82f6] transition-all"
@@ -4984,17 +5430,17 @@ export function GameCanvas({
           </div>
 
           <div className="flex justify-between items-end mt-2 mb-1">
-            <span className="text-[10px] text-rose-500 font-mono font-bold tracking-[0.2em]">
-              POWER
+            <span className="text-[10px] text-[#EF4444] font-mono font-bold tracking-[0.2em]">
+              BOOST
             </span>
             <span className="text-xs text-white font-mono" ref={staminaTextRef}>
               100%
             </span>
           </div>
-          <div className="w-full h-1 bg-slate-800">
+          <div className="w-full h-1 bg-[#151f3d]">
             <div
               ref={staminaRef}
-              className="h-full bg-rose-500 shadow-[0_0_8px_#f43f5e] transition-all"
+              className="h-full bg-[#EF4444] shadow-[0_0_8px_#EF4444] transition-all"
             ></div>
           </div>
 
@@ -5008,11 +5454,11 @@ export function GameCanvas({
         style={{ transform: `translateX(-50%) scale(${uiScale})` }}
       >
         <div
-          className="bg-cyan-950/40 border border-cyan-500/30 backdrop-blur-md px-6 py-2 flex flex-col items-center shadow-[0_0_20px_rgba(6,182,212,0.15)] w-full relative"
+          className="bg-[#00D9FF]/20/40 border border-[#00D9FF]/30 backdrop-blur-md px-6 py-2 flex flex-col items-center shadow-[0_0_20px_rgba(0,217,255,0.15)] w-full relative"
           style={{ clipPath: "polygon(5% 0, 95% 0, 100% 100%, 0 100%)" }}
         >
           <span
-            className="text-[10px] text-cyan-400 font-mono font-bold tracking-[0.3em] uppercase mb-1"
+            className="text-[10px] text-[#00D9FF] font-mono font-bold tracking-[0.3em] uppercase mb-1"
             style={{ marginLeft: "0.3em" }}
           >
             WAVE
@@ -5025,16 +5471,16 @@ export function GameCanvas({
             01
           </span>
         </div>
-        <div className="bg-slate-900/60 border border-t-0 border-cyan-900/50 backdrop-blur-md px-6 py-1.5 flex flex-col items-center w-[90%]">
+        <div className="bg-[#0d1428]/60 border border-t-0 border-[#00D9FF]/20 backdrop-blur-md px-6 py-1.5 flex flex-col items-center w-[90%]">
           <div className="flex justify-between w-full text-[10px] font-mono font-bold text-slate-300">
             <span>T-MINUS</span>
-            <span ref={timeRef} className="text-cyan-300">
+            <span ref={timeRef} className="text-[#5ce5ff]">
               00:00
             </span>
           </div>
           <div className="flex justify-between w-full text-[10px] font-mono font-bold text-slate-300 mt-0.5">
             <span>SCORE</span>
-            <span ref={scoreRef} className="text-rose-400">
+            <span ref={scoreRef} className="text-[#EF4444]">
               0
             </span>
           </div>
@@ -5043,22 +5489,24 @@ export function GameCanvas({
 
       {/* Top Right: Tactical Radar & Algo */}
       <div
-        className="absolute top-4 right-4 flex gap-4 pointer-events-none z-10 origin-top-right"
+        className="absolute top-4 right-4 flex gap-4 pointer-events-none z-[99] origin-top-right items-start"
         style={{ transform: `scale(${uiScale})` }}
       >
-        <button
-          onClick={togglePause}
-          className="pointer-events-auto bg-slate-900/80 hover:bg-cyan-950 border-l-4 border-r border-t border-b border-cyan-900/50 hover:border-cyan-500 text-cyan-500 hover:text-cyan-300 px-3 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.1)] text-[10px] font-mono font-bold tracking-widest h-fit transition-all backdrop-blur-sm"
-          style={{ transform: "skewX(-10deg)" }}
-        >
-          <div style={{ transform: "skewX(10deg)", paddingLeft: "0.1em" }}>
+        <div className="pointer-events-auto mt-0">
+          <button
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              togglePause();
+            }}
+            className="bg-[#0d1428]/90 hover:bg-[#00D9FF]/40 border-2 border-[#00D9FF]/40 hover:border-[#00D9FF] text-[#00D9FF] hover:text-[#ffffff] px-4 py-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-xs font-mono font-black tracking-[0.2em] cursor-pointer backdrop-blur-md transition-all active:scale-95 flex items-center justify-center uppercase drop-shadow-md"
+          >
             TACTICAL PAUSE
-          </div>
-        </button>
+          </button>
+        </div>
         <div className="flex flex-col items-end gap-2 pointer-events-auto">
           <div
             onClick={() => setIsMapExpanded(true)}
-            className="w-32 h-32 bg-slate-950/80 border border-cyan-500/30 p-1 flex items-center justify-center relative shadow-[0_0_20px_rgba(6,182,212,0.15)] backdrop-blur-md cursor-pointer hover:border-cyan-400/60 transition-colors group"
+            className="w-32 h-32 bg-[#0A0F1F]/80 border border-[#00D9FF]/30 p-1 flex items-center justify-center relative shadow-[0_0_20px_rgba(0,217,255,0.15)] backdrop-blur-md cursor-pointer hover:border-[#00D9FF]/60 transition-colors group"
             style={{
               clipPath: "polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%)",
             }}
@@ -5068,30 +5516,30 @@ export function GameCanvas({
               ref={minimapRef}
               width={120}
               height={120}
-              className="w-full h-full block bg-[#0A0F1F] border border-cyan-900/50 relative group-hover:border-cyan-400/50 transition-colors"
+              className="w-full h-full block bg-[#0A0F1F] border border-[#00D9FF]/20 relative group-hover:border-[#00D9FF]/50 transition-colors"
             />
             <div
-              className="absolute top-0 right-0 bg-cyan-500/20 w-4 h-4"
+              className="absolute top-0 right-0 bg-[#00D9FF]/20 w-4 h-4"
               style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }}
             ></div>
-            <div className="absolute inset-0 bg-cyan-500/0 group-hover:bg-cyan-500/10 pointer-events-none transition-colors mix-blend-screen" />
+            <div className="absolute inset-0 bg-[#00D9FF]/0 group-hover:bg-[#00D9FF]/10 pointer-events-none transition-colors mix-blend-screen" />
           </div>
 
           <div className="flex flex-col items-end gap-1.5 w-full mt-1 pointer-events-none">
             <div
-              className="bg-rose-950/60 border border-rose-500/40 px-3 py-1.5 shadow-[0_0_10px_rgba(244,63,94,0.1)] w-full text-right backdrop-blur-sm"
+              className="bg-[#EF4444]/20/60 border border-[#EF4444]/40 px-3 py-1.5 shadow-[0_0_10px_rgba(244,63,94,0.1)] w-full text-right backdrop-blur-sm"
               style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 10% 100%)" }}
             >
               <span
                 ref={targetsRef}
-                className="text-[10px] text-rose-400 font-mono font-bold tracking-widest"
+                className="text-[10px] text-[#EF4444] font-mono font-bold tracking-widest"
               >
                 TARGETS: 0
               </span>
             </div>
 
             <div
-              className="bg-slate-900/80 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.1)] flex flex-col w-full text-white backdrop-blur-sm"
+              className="bg-[#0d1428]/80 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.1)] flex flex-col w-full text-white backdrop-blur-sm"
               style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 10% 100%)" }}
             >
               <div className="bg-amber-500/10 px-3 py-1 border-b border-amber-500/20 flex justify-between items-center gap-4">
@@ -5112,28 +5560,28 @@ export function GameCanvas({
             </div>
 
             <div
-              className="bg-slate-900/80 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.1)] flex flex-col w-full text-white pointer-events-auto backdrop-blur-sm"
+              className="bg-[#0d1428]/80 border border-[#00D9FF]/40 shadow-[0_0_10px_rgba(6,182,212,0.1)] flex flex-col w-full text-white pointer-events-auto backdrop-blur-sm"
               style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 10% 100%)" }}
             >
-              <div className="bg-cyan-500/10 px-3 py-1 border-b border-cyan-500/20 flex justify-between items-center gap-2">
-                <span className="text-[9px] text-cyan-400 font-mono tracking-widest font-bold">
+              <div className="bg-[#00D9FF]/10 px-3 py-1 border-b border-[#00D9FF]/20 flex justify-between items-center gap-2">
+                <span className="text-[9px] text-[#00D9FF] font-mono tracking-widest font-bold">
                   DRONE RANGE
                 </span>
               </div>
-              <div className="px-3 py-1.5 flex justify-between items-center bg-slate-950/50">
+              <div className="px-3 py-1.5 flex justify-between items-center bg-[#0A0F1F]/50">
                 <button
                   onClick={() => setDroneRange((r) => Math.max(300, r - 100))}
-                  className="text-cyan-400 hover:text-white bg-cyan-900/30 hover:bg-cyan-500/50 px-2 py-0.5 text-[10px] font-bold transition-colors"
+                  className="text-[#00D9FF] hover:text-white bg-[#00D9FF]/30 hover:bg-[#00D9FF]/50 px-2 py-0.5 text-[10px] font-bold transition-colors"
                 >
                   {" "}
                   -{" "}
                 </button>
-                <span className="text-cyan-300 font-mono text-[10px] font-bold min-w-[30px] text-center">
+                <span className="text-[#5ce5ff] font-mono text-[10px] font-bold min-w-[30px] text-center">
                   {droneRange}
                 </span>
                 <button
                   onClick={() => setDroneRange((r) => Math.min(2000, r + 100))}
-                  className="text-cyan-400 hover:text-white bg-cyan-900/30 hover:bg-cyan-500/50 px-2 py-0.5 text-[10px] font-bold transition-colors"
+                  className="text-[#00D9FF] hover:text-white bg-[#00D9FF]/30 hover:bg-[#00D9FF]/50 px-2 py-0.5 text-[10px] font-bold transition-colors"
                 >
                   {" "}
                   +{" "}
@@ -5142,12 +5590,12 @@ export function GameCanvas({
             </div>
 
             <div
-              className="bg-slate-900/80 border border-indigo-500/40 shadow-[0_0_10px_rgba(99,102,241,0.1)] flex flex-col w-full text-white pointer-events-auto backdrop-blur-sm mt-1"
+              className="bg-[#0d1428]/80 border border-[#6366F1]/40 shadow-[0_0_10px_rgba(99,102,241,0.1)] flex flex-col w-full text-white pointer-events-auto backdrop-blur-sm mt-1"
               style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 10% 100%)" }}
             >
-              <div className="bg-indigo-500/10 px-3 py-1 border-b border-indigo-500/20 flex flex-col items-center gap-1">
-                <span className="text-[9px] text-indigo-400 font-mono tracking-widest font-bold">
-                  TARGET LIST
+              <div className="bg-[#6366F1]/10 px-3 py-1 border-b border-[#6366F1]/20 flex flex-col items-center gap-1">
+                <span className="text-[9px] text-[#6366F1] font-mono tracking-widest font-bold">
+                  TARGET QUEUE
                 </span>
               </div>
               <div
@@ -5175,7 +5623,10 @@ export function GameCanvas({
       >
         <div
           ref={algoHudRef}
-          className="relative flex items-center justify-center gap-1 bg-slate-900/90 border border-slate-700/50 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md px-4 py-2 rounded-xl pointer-events-none"
+          className="relative flex items-center justify-center gap-1 bg-[#0d1428]/90 border border-[#1e2b52]/50 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md px-4 py-2 rounded-xl pointer-events-auto cursor-pointer hover:bg-[#151f3d]/90 active:scale-95 transition-all"
+          onClick={() => {
+            window.dispatchEvent(new KeyboardEvent("keydown", { key: "q" }));
+          }}
         >
           {/* Managed by innerHTML */}
         </div>
@@ -5187,13 +5638,14 @@ export function GameCanvas({
         style={{ transform: `translate(-50%, -50%) scale(${uiScale})` }}
       >
         <div
-          className="text-4xl font-black text-rose-500 font-mono tracking-[0.3em] drop-shadow-[0_0_15px_rgba(244,63,94,1)] animate-pulse"
+          className="text-4xl font-black text-[#EF4444] font-mono tracking-[0.3em] drop-shadow-[0_0_15px_rgba(244,63,94,1)] animate-pulse"
           style={{ marginLeft: "0.3em" }}
         >
           WARNING
         </div>
         <div
-          className="text-sm font-bold text-white tracking-widest mt-2 uppercase bg-rose-500/20 px-8 py-1 border border-rose-500"
+          ref={bossWarningSubtextRef}
+          className="text-sm font-bold text-white tracking-widest mt-2 uppercase bg-[#EF4444]/20 px-8 py-1 border border-[#EF4444]"
           style={{ marginLeft: "0.1em" }}
         >
           MAJOR THREAT INCOMING
@@ -5211,7 +5663,7 @@ export function GameCanvas({
         </div>
 
         <div
-          className="bg-slate-900/80 px-4 lg:px-8 py-2 border-l-4 border-amber-500 flex flex-col items-center backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0"
+          className="bg-[#0d1428]/80 px-4 lg:px-8 py-2 border-l-4 border-[#00D9FF] flex flex-col items-center backdrop-blur-md shadow-[0_0_15px_rgba(0,217,255,0.15)] shrink-0"
           style={{ transform: "skewX(-10deg)" }}
         >
           <div
@@ -5219,13 +5671,13 @@ export function GameCanvas({
             style={{ transform: "skewX(10deg)" }}
           >
             <span
-              className="text-[8px] lg:text-[9px] text-amber-500 font-mono font-bold tracking-[0.2em]"
+              className="text-[8px] lg:text-[9px] text-[#00D9FF] font-mono font-bold tracking-[0.2em]"
               style={{ marginLeft: "0.2em" }}
             >
-              AMMO
+              ENERGY
             </span>
             <span className="text-xl lg:text-2xl font-mono text-white font-bold leading-none">
-              <span ref={ammoRef}>150</span>
+              <span ref={ammoRef}>100</span>
             </span>
           </div>
         </div>
@@ -5240,23 +5692,23 @@ export function GameCanvas({
       {/* Expanded Tactical Map Overlay */}
       {isMapExpanded && (
         <div
-          className="absolute inset-0 bg-slate-950/90 z-[100] p-6 md:p-12 flex flex-col pointer-events-auto backdrop-blur-md"
+          className="absolute inset-0 bg-[#0A0F1F]/90 z-[100] p-6 md:p-12 flex flex-col pointer-events-auto backdrop-blur-md"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsMapExpanded(false);
           }}
         >
-          <div className="flex justify-between items-end mb-4 text-cyan-500 font-mono w-full max-w-5xl mx-auto shrink-0 z-10">
+          <div className="flex justify-between items-end mb-4 text-[#00D9FF] font-mono w-full max-w-5xl mx-auto shrink-0 z-10">
             <div className="flex flex-col">
-              <span className="text-2xl tracking-[0.3em] uppercase font-bold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">
+              <span className="text-2xl tracking-[0.3em] uppercase font-bold text-[#5ce5ff] drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">
                 TACTICAL MAP
               </span>
-              <span className="text-[10px] tracking-widest text-cyan-500/70">
+              <span className="text-[10px] tracking-widest text-[#00D9FF]/70">
                 REAL-TIME TELEMETRY // ENGAGED
               </span>
             </div>
             <button
               onClick={() => setIsMapExpanded(false)}
-              className="text-cyan-400 hover:text-white px-4 py-2 border border-cyan-500/50 hover:bg-cyan-900/50 transition-colors uppercase tracking-widest text-xs tracking-[0.2em] shrink-0"
+              className="text-[#00D9FF] hover:text-white px-4 py-2 border border-[#00D9FF]/50 hover:bg-[#00D9FF]/50 transition-colors uppercase tracking-widest text-xs tracking-[0.2em] shrink-0"
               style={{ clipPath: "polygon(10% 0, 100% 0, 90% 100%, 0% 100%)" }}
             >
               [X] CLOSE
@@ -5264,7 +5716,7 @@ export function GameCanvas({
           </div>
 
           <div
-            className="w-full max-w-5xl flex-1 mx-auto bg-slate-950/50 border border-cyan-500/40 p-1 md:p-2 shadow-[0_0_30px_rgba(6,182,212,0.15)] relative overflow-hidden min-h-0"
+            className="w-full max-w-5xl flex-1 mx-auto bg-[#0A0F1F]/50 border border-[#00D9FF]/40 p-1 md:p-2 shadow-[0_0_30px_rgba(0,217,255,0.15)] relative overflow-hidden min-h-0"
             style={{
               clipPath:
                 "polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%)",
@@ -5272,35 +5724,35 @@ export function GameCanvas({
           >
             <canvas
               ref={expandedMinimapRef}
-              className="w-full h-full block bg-[#0A0F1F] border border-cyan-900/50"
+              className="w-full h-full block bg-[#0A0F1F] border border-[#00D9FF]/20"
             />
 
             {/* Decorative Corner Accents */}
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#00D9FF] pointer-events-none" />
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[#00D9FF] pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[#00D9FF] pointer-events-none" />
 
-            <div className="absolute bottom-6 right-6 text-[10px] font-mono text-cyan-500/80 pointer-events-none bg-black/50 px-2 py-1 backdrop-blur-sm z-10">
+            <div className="absolute bottom-6 right-6 text-[10px] font-mono text-[#00D9FF]/80 pointer-events-none bg-black/50 px-2 py-1 backdrop-blur-sm z-10">
               LIVE FEED
             </div>
           </div>
           <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-[10px] font-mono text-slate-400 mt-4 max-w-5xl mx-auto w-full mb-8 md:mb-0 shrink-0">
             <span className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#f43f5e]"></div>ENEMIES
+              <div className="w-2 h-2 rounded-full bg-[#EF4444]"></div>ENEMIES
             </span>
             <span className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full border border-[#ec4899]"></div>
               VIPERS/BOSSES
             </span>
             <span className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#F59E0B]"></div>
-              AMMUNITION
+              <div className="w-2 h-2 rounded-full bg-[#00D9FF]"></div>
+              ENERGY
             </span>
             <span className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#10b981]"></div>HEALTH
             </span>
             <span className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-[#ffffff] shadow-[0_0_8px_#22d3ee]"></div>
+              <div className="w-2 h-2 bg-[#ffffff] shadow-[0_0_8px_#00D9FF]"></div>
               PLAYER UNIT
             </span>
           </div>
@@ -5346,7 +5798,7 @@ export function GameCanvas({
                   new KeyboardEvent("keydown", { key: "x" }),
                 );
               }}
-              className="w-16 h-16 bg-rose-950/60 border-2 border-rose-500 flex items-center justify-center text-rose-400 font-mono font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.4)] backdrop-blur-md active:bg-rose-500/30 transition-transform active:scale-95 pointer-events-auto"
+              className="w-16 h-16 bg-[#EF4444]/20/60 border-2 border-[#EF4444] flex items-center justify-center text-[#EF4444] font-mono font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.4)] backdrop-blur-md active:bg-[#EF4444]/30 transition-transform active:scale-95 pointer-events-auto"
               style={{
                 clipPath:
                   "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
@@ -5429,7 +5881,7 @@ export function GameCanvas({
               onPointerCancel={(e) => {
                 e.currentTarget.dataset.active = "false";
               }}
-              className="w-14 h-14 bg-slate-800/60 border border-slate-300 flex items-center justify-center text-slate-200 font-mono font-bold text-xs shadow-[0_0_10px_rgba(255,255,255,0.2)] backdrop-blur-md active:bg-slate-400/30 transition-transform active:scale-95 pointer-events-auto"
+              className="w-14 h-14 bg-[#151f3d]/60 border border-slate-300 flex items-center justify-center text-slate-200 font-mono font-bold text-xs shadow-[0_0_10px_rgba(255,255,255,0.2)] backdrop-blur-md active:bg-slate-400/30 transition-transform active:scale-95 pointer-events-auto"
               style={{
                 clipPath: "polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%)",
               }}
@@ -5478,38 +5930,46 @@ export function GameCanvas({
       {/* Cinematic CRT Scanline Overlay */}
       <div className="absolute inset-0 pointer-events-none z-20 opacity-10 mix-blend-overlay bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]"></div>
 
+      {/* OS Interruptions / Terminals layer */}
+      <div
+        ref={osMessagesRef}
+        className="absolute bottom-24 left-8 pointer-events-none z-30 flex flex-col gap-1 items-start w-[400px]"
+      ></div>
+
       {isPaused && (
-        <div className="absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-6 gap-8">
-          
+        <div className="absolute inset-0 z-[110] bg-[#0A0F1F]/80 backdrop-blur-xl flex items-center justify-center p-6 gap-8">
           {/* Main Control Panel */}
           <div
-            className="border border-cyan-500/30 bg-cyan-950/20 p-10 flex flex-col items-center shadow-[0_0_30px_rgba(6,182,212,0.15)] shrink-0"
-            style={{ clipPath: "polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%)" }}
+            className="border border-[#00D9FF]/30 bg-[#00D9FF]/20/20 p-10 flex flex-col items-center shadow-[0_0_30px_rgba(0,217,255,0.15)] shrink-0"
+            style={{
+              clipPath:
+                "polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%)",
+            }}
           >
-            <h2 className="text-4xl font-bold text-cyan-400 font-mono mb-2 tracking-[0.3em] uppercase drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+            <h2 className="text-4xl font-bold text-[#00D9FF] font-mono mb-2 tracking-[0.3em] uppercase drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">
               Tactical Frame Suspended
             </h2>
-            <p className="text-cyan-100/50 font-mono text-sm mb-10 tracking-widest text-center border-b border-cyan-900/50 pb-4 w-full">
+            <p className="text-cyan-100/50 font-mono text-sm mb-10 tracking-widest text-center border-b border-[#00D9FF]/20 pb-4 w-full">
               TELEMETRY SUSPENDED
             </p>
 
             <div className="flex flex-col gap-4 w-full min-w-[250px]">
               <button
                 onClick={togglePause}
-                className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 px-8 py-4 font-mono font-bold tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3"
+                className="bg-[#00D9FF] hover:bg-[#00D9FF] text-slate-950 px-8 py-4 font-mono font-bold tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3"
               >
-                <div className="w-2 h-2 bg-slate-950 animate-pulse"></div>
+                <div className="w-2 h-2 bg-[#0A0F1F] animate-pulse"></div>
                 RESUME
               </button>
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-400 px-8 py-4 font-mono font-bold tracking-widest transition-all active:scale-95"
+                className="bg-[#151f3d] hover:bg-slate-700 border border-slate-600 text-[#00D9FF] px-8 py-4 font-mono font-bold tracking-widest transition-all active:scale-95"
               >
                 SYSTEM SETTINGS
               </button>
               <button
                 onClick={onReturnMenu}
-                className="bg-slate-900 hover:bg-rose-950 border border-rose-900/50 hover:border-rose-500 text-rose-500 hover:text-rose-400 px-8 py-4 font-mono font-bold tracking-widest transition-all active:scale-95"
+                className="bg-[#0d1428] hover:bg-[#EF4444]/20 border border-rose-900/50 hover:border-[#EF4444] text-[#EF4444] hover:text-[#EF4444] px-8 py-4 font-mono font-bold tracking-widest transition-all active:scale-95"
               >
                 ABORT MISSION
               </button>
@@ -5517,61 +5977,110 @@ export function GameCanvas({
           </div>
 
           {/* Task Manager Panel */}
-          <div className="hidden lg:flex flex-col border border-indigo-500/30 bg-indigo-950/20 p-6 w-[400px] h-[500px] shadow-[0_0_30px_rgba(99,102,241,0.1)]">
-             <div className="flex items-center justify-between mb-4 pb-2 border-b border-indigo-900/50">
-                <span className="text-indigo-400 font-mono font-bold tracking-widest uppercase">Swarm Observation</span>
-                <span className="text-indigo-500/50 font-mono text-xs">DETECTED SIGNALS</span>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2">
-                {pausedQueueRefs.length === 0 ? (
-                    <div className="text-slate-600 text-center font-mono text-sm tracking-widest italic mt-10">NO SIGNAL DETECTED</div>
-                ) : (
-                    pausedQueueRefs.map((proc, index) => {
-                        const rr = proc.S ? ((proc.W + proc.S) / Math.max(0.1, proc.S)).toFixed(2) : "0.00";
-                        return (
-                            <div key={proc.id} className="relative group border border-slate-800 bg-slate-900/50 p-2 font-mono flex items-center justify-between hover:bg-indigo-950/50 hover:border-indigo-500/50 transition-colors cursor-crosshair">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-slate-600 font-bold w-6 text-right">#{index+1}</span>
-                                    <span className="text-indigo-300 font-bold uppercase">{proc.type.substring(0,8)}</span>
-                                </div>
-                                <div className="text-right text-xs text-slate-400">
-                                    <div className="group-hover:hidden">ID: {proc.id.toString().substring(2, 6)}</div>
-                                    <div className="hidden group-hover:block text-indigo-400 animate-pulse">INSPECT</div>
-                                </div>
-                                
-                                {/* Hover Tooltip Context Menu */}
-                                <div className="absolute right-[105%] top-1/2 -translate-y-1/2 w-[220px] bg-slate-950 border border-indigo-500 p-3 hidden group-hover:flex flex-col gap-2 shadow-2xl z-50 pointer-events-none">
-                                    <div className="text-indigo-400 font-bold border-b border-indigo-900/50 pb-1 mb-1">HOSTILE DETAILS</div>
-                                    <div className="flex justify-between text-xs"><span className="text-slate-500">Tracking Time</span><span className="text-white">{proc.W.toFixed(2)}s</span></div>
-                                    <div className="flex justify-between text-xs"><span className="text-slate-500">Threat Mass</span><span className="text-white">{Math.ceil(proc.maxHp)}</span></div>
-                                    <div className="flex justify-between text-xs"><span className="text-slate-500">Priority Mult</span><span className="text-white">{proc.priority}x</span></div>
-                                    <div className="flex justify-between text-xs mt-2 pt-2 border-t border-slate-800"><span className="text-amber-500">Calculated Threat</span><span className="text-amber-400 font-bold">{rr}</span></div>
-                                </div>
-                            </div>
-                        )
-                    })
-                )}
-             </div>
+          <div className="hidden lg:flex flex-col border border-[#6366F1]/30 bg-[#6366F1]/20/20 p-6 w-[400px] h-[500px] shadow-[0_0_30px_rgba(99,102,241,0.1)]">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-indigo-900/50">
+              <span className="text-[#6366F1] font-mono font-bold tracking-widest uppercase">
+                Swarm Observation
+              </span>
+              <span className="text-[#6366F1]/50 font-mono text-xs">
+                DETECTED SIGNALS
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+              {pausedQueueRefs.length === 0 ? (
+                <div className="text-slate-600 text-center font-mono text-sm tracking-widest italic mt-10">
+                  NO SIGNAL DETECTED
+                </div>
+              ) : (
+                pausedQueueRefs.map((proc, index) => {
+                  const rr = proc.S
+                    ? ((proc.W + proc.S) / Math.max(0.1, proc.S)).toFixed(2)
+                    : "0.00";
+                  return (
+                    <div
+                      key={proc.id}
+                      className="relative group border border-[#151f3d] bg-[#0d1428]/50 p-2 font-mono flex items-center justify-between hover:bg-[#6366F1]/20/50 hover:border-[#6366F1]/50 transition-colors cursor-crosshair"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-slate-600 font-bold w-6 text-right">
+                          #{index + 1}
+                        </span>
+                        <span className="text-indigo-300 font-bold uppercase">
+                          {proc.type.substring(0, 8)}
+                        </span>
+                      </div>
+                      <div className="text-right text-xs text-slate-400">
+                        <div className="group-hover:hidden">
+                          ID: {proc.id.toString().substring(2, 6)}
+                        </div>
+                        <div className="hidden group-hover:block text-[#6366F1] animate-pulse">
+                          INSPECT
+                        </div>
+                      </div>
+
+                      {/* Hover Tooltip Context Menu */}
+                      <div className="absolute right-[105%] top-1/2 -translate-y-1/2 w-[220px] bg-[#0A0F1F] border border-[#6366F1] p-3 hidden group-hover:flex flex-col gap-2 shadow-2xl z-50 pointer-events-none">
+                        <div className="text-[#6366F1] font-bold border-b border-indigo-900/50 pb-1 mb-1">
+                          HOSTILE DETAILS
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Tracking Time</span>
+                          <span className="text-white">
+                            {proc.W.toFixed(2)}s
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Threat Mass</span>
+                          <span className="text-white">
+                            {Math.ceil(proc.maxHp)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Priority Mult</span>
+                          <span className="text-white">{proc.priority}x</span>
+                        </div>
+                        <div className="flex justify-between text-xs mt-2 pt-2 border-t border-[#151f3d]">
+                          <span className="text-amber-500">
+                            Calculated Threat
+                          </span>
+                          <span className="text-amber-400 font-bold">{rr}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {isSettingsOpen && (
-        <div className="absolute inset-0 z-[60] bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6">
-          <div className="border border-cyan-500/30 bg-cyan-950/20 p-8 w-[450px] max-w-full shadow-[0_0_30px_rgba(6,182,212,0.15)] flex flex-col" style={{ clipPath: "polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%)" }}>
-            <h2 className="text-2xl font-bold text-cyan-400 font-mono mb-6 tracking-widest uppercase border-b border-cyan-500/30 pb-4">
-              System Settings
+        <div className="absolute inset-0 z-[120] bg-[#0A0F1F]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6">
+          <div
+            className="border border-[#00D9FF]/30 bg-[#00D9FF]/20/20 p-8 w-[450px] max-w-full shadow-[0_0_30px_rgba(0,217,255,0.15)] flex flex-col"
+            style={{
+              clipPath:
+                "polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%)",
+            }}
+          >
+            <h2 className="text-2xl font-bold text-[#00D9FF] font-mono mb-6 tracking-widest uppercase border-b border-[#00D9FF]/30 pb-4">
+              Settings
             </h2>
-            
+
             <div className="flex flex-col gap-8 flex-1 overflow-y-auto pr-2">
               {/* Drone Settings */}
               <div>
-                <h3 className="text-sm font-bold text-cyan-300 font-mono tracking-wider mb-4">DRONE SENSORS</h3>
+                <h3 className="text-sm font-bold text-[#5ce5ff] font-mono tracking-wider mb-4">
+                  DRONE SYSTEMS
+                </h3>
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center text-xs font-mono text-cyan-100">
                     <span>Engagement Range</span>
-                    <span className="text-white bg-slate-900 px-2 py-1 rounded border border-cyan-900">{droneRange}px</span>
+                    <span className="text-white bg-[#0d1428] px-2 py-1 rounded border border-[#00D9FF]/40">
+                      {droneRange}px
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -5580,19 +6089,23 @@ export function GameCanvas({
                     step="50"
                     value={droneRange}
                     onChange={(e) => setDroneRange(Number(e.target.value))}
-                    className="w-full accent-cyan-400 h-1 bg-slate-800 appearance-none cursor-pointer"
+                    className="w-full accent-cyan-400 h-1 bg-[#151f3d] appearance-none cursor-pointer"
                   />
                 </div>
               </div>
 
               {/* Audio Settings */}
               <div>
-                <h3 className="text-sm font-bold text-cyan-300 font-mono tracking-wider mb-4">AUDIO TELEMETRY</h3>
+                <h3 className="text-sm font-bold text-[#5ce5ff] font-mono tracking-wider mb-4">
+                  AUDIO
+                </h3>
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center text-xs font-mono text-cyan-100">
                       <span>Master Output</span>
-                      <span className="text-white bg-slate-900 px-2 py-1 rounded border border-cyan-900">{Math.round(masterVolume * 100)}%</span>
+                      <span className="text-white bg-[#0d1428] px-2 py-1 rounded border border-[#00D9FF]/40">
+                        {Math.round(masterVolume * 100)}%
+                      </span>
                     </div>
                     <input
                       type="range"
@@ -5601,13 +6114,15 @@ export function GameCanvas({
                       step="0.05"
                       value={masterVolume}
                       onChange={(e) => setMasterVolume(Number(e.target.value))}
-                      className="w-full accent-cyan-400 h-1 bg-slate-800 appearance-none cursor-pointer"
+                      className="w-full accent-cyan-400 h-1 bg-[#151f3d] appearance-none cursor-pointer"
                     />
                   </div>
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center text-xs font-mono text-cyan-100">
                       <span>BGM Isolation</span>
-                      <span className="text-white bg-slate-900 px-2 py-1 rounded border border-cyan-900">{Math.round(bgmVolume * 100)}%</span>
+                      <span className="text-white bg-[#0d1428] px-2 py-1 rounded border border-[#00D9FF]/40">
+                        {Math.round(bgmVolume * 100)}%
+                      </span>
                     </div>
                     <input
                       type="range"
@@ -5616,7 +6131,7 @@ export function GameCanvas({
                       step="0.05"
                       value={bgmVolume}
                       onChange={(e) => setBgmVolume(Number(e.target.value))}
-                      className="w-full accent-cyan-400 h-1 bg-slate-800 appearance-none cursor-pointer"
+                      className="w-full accent-cyan-400 h-1 bg-[#151f3d] appearance-none cursor-pointer"
                     />
                   </div>
                 </div>
@@ -5624,50 +6139,71 @@ export function GameCanvas({
 
               {/* Camera Settings */}
               <div>
-                <h3 className="text-sm font-bold text-cyan-300 font-mono tracking-wider mb-4">CAMERA OPTICS</h3>
-                <div className="flex bg-slate-900 border border-slate-700 p-1 mb-6 rounded-md shadow-inner gap-1">
-                   {([
-                      { id: 'offset', label: 'OFFSET' },
-                      { id: 'center', label: 'CENTER' },
-                      { id: 'dynamic', label: 'DYNAMIC' }
-                   ] as const).map(mode => (
-                      <button
-                         key={mode.id}
-                         onClick={() => setCameraMode(mode.id)}
-                         className={`flex-1 py-2 text-xs font-mono font-bold tracking-widest ${cameraMode === mode.id ? 'bg-cyan-600 text-white shadow-md rounded' : 'text-slate-400 hover:text-cyan-200 hover:bg-slate-800 rounded'}`}
-                      >
-                         {mode.label}
-                      </button>
-                   ))}
+                <h3 className="text-sm font-bold text-[#5ce5ff] font-mono tracking-wider mb-4">
+                  CAMERA OPTICS
+                </h3>
+                <div className="flex bg-[#0d1428] border border-[#1e2b52] p-1 mb-6 rounded-md shadow-inner gap-1">
+                  {(
+                    [
+                      { id: "offset", label: "OFFSET" },
+                      { id: "center", label: "CENTER" },
+                      { id: "dynamic", label: "DYNAMIC" },
+                    ] as const
+                  ).map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => setCameraMode(mode.id)}
+                      className={`flex-1 py-2 text-xs font-mono font-bold tracking-widest ${cameraMode === mode.id ? "bg-[#00b0cf] text-white shadow-md rounded" : "text-slate-400 hover:text-cyan-200 hover:bg-[#151f3d] rounded"}`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Display & Layout Settings */}
               <div>
-                 <h3 className="text-sm font-bold text-cyan-300 font-mono tracking-wider mb-4">INTERFACE CONFIG</h3>
-                 <button
-                   onClick={() => setIsHudEditorOpen(true)}
-                   className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-400 px-4 py-4 font-mono text-sm font-bold tracking-widest transition-all active:scale-95 text-center shadow-inner"
-                 >
-                   OPEN HUD DIAGNOSTICS
-                 </button>
+                <h3 className="text-sm font-bold text-[#5ce5ff] font-mono tracking-wider mb-4">
+                  INTERFACE CONFIG
+                </h3>
+                <button
+                  onClick={() => setIsHudEditorOpen(true)}
+                  className="w-full bg-[#151f3d] hover:bg-slate-700 border border-slate-600 text-[#00D9FF] px-4 py-4 font-mono text-sm font-bold tracking-widest transition-all active:scale-95 text-center shadow-inner mb-3"
+                >
+                  OPEN HUD DIAGNOSTICS
+                </button>
+                <button
+                  onClick={() =>
+                    setShowSchedulingIndicators(!showSchedulingIndicators)
+                  }
+                  className="w-full flex items-center justify-between bg-[#151f3d] hover:bg-slate-700 border border-slate-600 text-[#00D9FF] px-4 py-3 font-mono text-sm font-bold tracking-widest transition-all active:scale-95 shadow-inner"
+                >
+                  <span>SCHEDULING INDICATORS</span>
+                  <div
+                    className={`w-8 h-4 rounded-full flex items-center px-1 ${showSchedulingIndicators ? "bg-[#00D9FF]" : "bg-slate-700"}`}
+                  >
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full bg-white transition-transform ${showSchedulingIndicators ? "translate-x-3.5" : "translate-x-0"}`}
+                    />
+                  </div>
+                </button>
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-cyan-500/30">
-               <button
-                 onClick={() => setIsSettingsOpen(false)}
-                 className="w-full bg-cyan-700 hover:bg-cyan-600 text-slate-50 px-4 py-4 font-mono font-bold tracking-widest transition-all active:scale-95 text-center"
-               >
-                 ACCEPT & RETURN
-               </button>
+            <div className="mt-8 pt-4 border-t border-[#00D9FF]/30">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="w-full bg-cyan-700 hover:bg-[#00b0cf] text-slate-50 px-4 py-4 font-mono font-bold tracking-widest transition-all active:scale-95 text-center"
+              >
+                ACCEPT & RETURN
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {isHudEditorOpen && (
-        <div className="absolute inset-0 z-[100]">
+        <div className="absolute inset-0 z-[130]">
           <HudEditor
             onExit={() => {
               setIsHudEditorOpen(false);

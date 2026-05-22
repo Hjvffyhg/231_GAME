@@ -31,11 +31,12 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       const rB = ((b.W + b.S) / Math.max(0.1, b.S)) * pB;
       return rB - rA; // descending
     } else {
-      // RR: Round Robin, priority isn't strictly sorted purely mathematically like FCFS/HRRN here,
-      // but we can prioritize those with higher manual priority or who have waited longer.
-      const valA = (a.W * 0.1) * pA;
-      const valB = (b.W * 0.1) * pB;
-      return valB - valA; // descending
+      // RR: Strict Round Robin should NOT sort numerically. 
+      // It is a circular FIFO queue. By maintaining the provided index map (or pushing prioritized up),
+      // we avoid turning RR into FCFS. We just softly escalate Right-Click priorities.
+      if (pA > 1 && pB <= 1) return -1;
+      if (pB > 1 && pA <= 1) return 1;
+      return 0; // Maintain current FIFO array order!
     }
   }).map(en => en.id);
 

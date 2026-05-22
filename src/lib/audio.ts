@@ -6,15 +6,22 @@ export class SoundManager {
   currentBgmInterval: any = null;
   bgmIntensity: 'low' | 'med' | 'high' = 'low';
 
+  currentBgmVolume: number = 0.15;
+  currentMasterVolume: number = 0.3;
+
   setMasterVolume(val: number) {
-    if (this.masterGain) {
-      this.masterGain.gain.value = val;
+    this.currentMasterVolume = val;
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(val, this.ctx.currentTime);
     }
   }
 
   setBgmVolume(val: number) {
-    if (this.bgmGain) {
-      this.bgmGain.gain.value = val;
+    this.currentBgmVolume = val;
+    if (this.bgmGain && this.ctx) {
+      this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.bgmGain.gain.setValueAtTime(val, this.ctx.currentTime);
     }
   }
 
@@ -24,11 +31,11 @@ export class SoundManager {
       if (!AudioContext) return;
       this.ctx = new AudioContext();
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = 0.3; // Default volume
+      this.masterGain.gain.value = this.currentMasterVolume; // Default volume
       this.masterGain.connect(this.ctx.destination);
       
       this.bgmGain = this.ctx.createGain();
-      this.bgmGain.gain.value = 0.15;
+      this.bgmGain.gain.value = this.currentBgmVolume;
       this.bgmFilter = this.ctx.createBiquadFilter();
       this.bgmFilter.type = 'lowpass';
       this.bgmFilter.frequency.value = 20000;
@@ -42,17 +49,20 @@ export class SoundManager {
   }
 
   setLowRamEffect(isLow: boolean) {
-     if (!this.bgmFilter || !this.bgmGain) return;
-     const now = this.ctx!.currentTime;
+     if (!this.bgmFilter || !this.bgmGain || !this.ctx) return;
+     const now = this.ctx.currentTime;
      
+     this.bgmGain.gain.cancelScheduledValues(now);
+     this.bgmFilter.frequency.cancelScheduledValues(now);
+
      if (isLow) {
          // Muffled and glitching
          this.bgmFilter.frequency.setTargetAtTime(800, now, 0.5);
-         this.bgmGain.gain.setTargetAtTime(0.08, now, 0.5);
+         this.bgmGain.gain.setTargetAtTime(this.currentBgmVolume * 0.4, now, 0.5);
      } else {
          // Clear
          this.bgmFilter.frequency.setTargetAtTime(20000, now, 0.5);
-         this.bgmGain.gain.setTargetAtTime(0.15, now, 0.5);
+         this.bgmGain.gain.setTargetAtTime(this.currentBgmVolume, now, 0.5);
      }
   }
   
@@ -301,6 +311,45 @@ export class SoundManager {
        osc.start(this.ctx.currentTime + i * timeOffset);
        osc.stop(this.ctx.currentTime + (i + 1) * timeOffset);
     }
+  }
+
+  playLowHealthAlarm() {
+    if (!this.ctx || !this.masterGain) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+    osc.frequency.setValueAtTime(1200, this.ctx.currentTime + 0.1);
+    
+    gain.gain.setValueAtTime(0, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + 0.05); // softer so it doesn't blast ears continuously
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+    
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    
+    osc.start(this.ctx.currentTime);
+    osc.stop(this.ctx.currentTime + 0.2);
+  }
+
+  playSystemBlip() {
+    if (!this.ctx || !this.masterGain) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2000, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(4000, this.ctx.currentTime + 0.05);
+    
+    gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+    
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.05);
   }
 
   playGameOver() {
