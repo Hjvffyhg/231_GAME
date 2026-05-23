@@ -1644,3 +1644,15 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 > "change the ss of database and system report"
 
 **Result:** Replaced the older screenshot files `docs/screenshots/Database_info.png` and `docs/screenshots/Mission_report.png` with the new, high-quality, actual game interface images provided by the user. This updates the visual assets used in the `README.md` and project documentation to accurately show the modern pixelated style of the Database archives and the finished Mission Report layout.
+
+## 253. Game Mechanics Report and Infographics Poster Generation
+> "Can you generate an infographic poster for this game?  Use the asset and some screenshots. Use all the asset, not all the asset, but you can kumuha ng idea doon sa asset para pang-design doon sa poster infographics. Make it align with the theme of the game. And also for the game mechanics, there's a guideline about that. I think I created an md file for that, but I think it's not that detailed and a lack of information."
+
+**Result:** 
+1. **Infographic Poster Design:** Generated a high-resolution academic infographic poster `game_infographic_poster_1779510040606.png` matching the 1/8 illustration board requirements (10 inches by 15 inches). The poster compiles the game title, concepts, CPU scheduling drone integration (FCFS, RR, HRRN), system flowchart, upgrades, and features.
+2. **Infographic Poster Artifact:** Created `infographic_poster.md` inside the artifacts directory, detailing the design modules and embedding the generated high-res image.
+3. **Gameplay Mechanics Documentation:** Fully rewrote `PROGRESS_REPORT_2_GAMEPLAY.md` with complete and detailed game mechanics including:
+   - Detailed control configurations for keyboard/mouse and Mobile Legends-style twin joysticks.
+   - Comprehensive integration write-up on CPU scheduling algorithms (FCFS, RR, and HRRN) as drones (CPU cores) processing enemies (threads) in the ready queue, complete with the HRRN response ratio math.
+   - Explanations of boss mechanics (The Cycler and The Executor) linked directly to scheduling behavior.
+   - Specifications on simulation testing via AI Autopilot (Auto-Pilot) mode, black hole time-dilation physics, and a Mermaid system flowchart.
