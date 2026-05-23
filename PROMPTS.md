@@ -1685,3 +1685,9 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 
 **Result:**
 Generated a high-quality cover image for the game to be used for its itch.io page. The cover image captures the game's retro 16-bit arcade space shooter style, featuring the cyan player ship and its targeting drones in a galactic battle against a massive purple/magenta alien capital mothership amidst stars, nebulas, and asteroids, complete with a glowing retro-futuristic "SPACE SURVIVAL" title. Saved the cover image at `/public/assets/cover.png` and created relative copies at `/public/cover.png` and `/cover.png` for easy uploads.
+
+## 257. Infographic Poster Regeneration
+> "generate again  the poster"
+
+**Result:**
+Regenerated the academic infographic poster using the original 10"x15" layout parameters. It features the futuristic cyan-glowing buttons from the game's menu as the algorithm panels, the QR code, the crew names with their corresponding custom spaceship designs, simplified descriptions, and the Companion Drones/Bosses. Saved the poster to `docs/screenshots/infographic_poster_v2.png` and `infographic_poster_v2.png`.
