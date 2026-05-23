@@ -1679,3 +1679,9 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
    - Embedded visual representations of the player's targeting drone and respective wave boss (Goliath, Cycler, Executor) within each algorithm panel.
    - Added a clear 'Controls' reference panel listing movement, shooting, and scheduling keys.
 2. **Infographic Artifact Update:** Overwrote `infographic_poster.md` in the artifacts directory to embed the final revised design.
+
+## 256. Itch.io Cover Image Generation
+> "generate a cover image for this game"
+
+**Result:**
+Generated a high-quality cover image for the game to be used for its itch.io page. The cover image captures the game's retro 16-bit arcade space shooter style, featuring the cyan player ship and its targeting drones in a galactic battle against a massive purple/magenta alien capital mothership amidst stars, nebulas, and asteroids, complete with a glowing retro-futuristic "SPACE SURVIVAL" title. Saved the cover image at `/public/assets/cover.png` and created relative copies at `/public/cover.png` and `/cover.png` for easy uploads.
