@@ -1,0 +1,3 @@
+# Treat all PNG and ZIP assets as binary files to prevent line ending conversion
+*.png binary
+*.zip binary

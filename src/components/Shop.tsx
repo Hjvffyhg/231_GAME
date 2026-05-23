@@ -451,7 +451,7 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
               ></div>
               <div className="z-20 w-[400px] h-[400px] flex items-center justify-center filter drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]">
                 <img
-                  src={`/VoidFleetPack/${displayShip.name}/Base.png`}
+                  src={`VoidFleetPack/${displayShip.name}/Base.png`}
                   alt={displayShip.name}
                   className="max-w-[400px] max-h-[400px] w-full h-full object-contain scale-110"
                   style={{ imageRendering: "pixelated" }}

@@ -186,7 +186,7 @@ export function GameCanvas({
 
   useEffect(() => {
     const img = new Image();
-    img.src = "/assets/asteroids.png";
+    img.src = "assets/asteroids.png";
     img.onload = () => {
       asteroidSpriteRef.current = img;
     };
@@ -231,6 +231,13 @@ export function GameCanvas({
   };
 
   useEffect(() => {
+    // Reset session refs and states when starting/restarting a game run
+    isDeadRef.current = false;
+    isPausedRef.current = false;
+    setIsPaused(false);
+    setIsMapExpanded(false);
+    setPausedQueueRefs([]);
+
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -276,9 +283,9 @@ export function GameCanvas({
       };
 
       await Promise.all([
-        loadBossImg("boss", "/assets/jboss_carrier.png"),
-        loadBossImg("boss_rr", "/assets/jboss_rr.png"),
-        loadBossImg("boss_hrrn", "/assets/jboss_hrrn.png"),
+        loadBossImg("boss", "assets/jboss_carrier.png"),
+        loadBossImg("boss_rr", "assets/jboss_rr.png"),
+        loadBossImg("boss_hrrn", "assets/jboss_hrrn.png"),
       ]);
 
       const selectedShip =

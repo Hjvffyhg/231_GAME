@@ -121,7 +121,7 @@ export async function loadShip(name: ShipName): Promise<ShipSprites> {
   const entries = await Promise.all(
     layers.map(
       async (l) =>
-        [l, await loadImage(`/VoidFleetPack/${name}/${l}.png`)] as const,
+        [l, await loadImage(`VoidFleetPack/${name}/${l}.png`)] as const,
     ),
   );
   return Object.fromEntries(entries) as ShipSprites;
@@ -131,7 +131,7 @@ export async function loadShip(name: ShipName): Promise<ShipSprites> {
 export async function loadProjectile(
   name: ProjectileName,
 ): Promise<HTMLImageElement | null> {
-  return loadImage(`/VoidFleetPack/Projectiles/${name}.png`);
+  return loadImage(`VoidFleetPack/Projectiles/${name}.png`);
 }
 
 /** Load every projectile at once. */

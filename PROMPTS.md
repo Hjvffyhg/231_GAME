@@ -1607,3 +1607,35 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 > "Animation buttons. There are no elements available here. Even I, a technical frame, must be complete or abort mission to record. To primary, there's no file or record here. Even I start playing the game and end it."
 
 **Result:** Fixed a vital logical flow where aborting a mission via the Pause Menu silently returned the user to the Main Menu without reporting telemetry back to the top-level application state. The "ABORT MISSION" command now forcefully transitions the simulation into a proper Game Over state (Cause: "MISSION ABORTED") and dispatches the session's elapsed time, kills, and earned credits to the Mission Report. The application now also caches the report persistently in `localStorage` so pilots won't lose their last run's diagnostics on a hard page refresh.
+
+## 248. Ship Sprite Asset Load Fix
+> "The problem in the picture is that the asset hindi siya naglo-load sa game."
+
+**Result:** Resolved the issue where ship sprite assets (like the Fighter) failed to load, causing the game to fall back to drawing solid cyan placeholder circles. 
+1. **Asset Integrity Check:** Discovered that the `.png` sprite files in `public/VoidFleetPack/` had corrupted file signatures (`efbfbd504e47...` instead of `89504e47...`), caused by Git line ending conversion (`autocrlf`) treating them as text files.
+2. **Asset Restoration:** Extracted fresh, uncorrupted binary assets from `public/assets/VoidFleetPack_organized (1).zip` using native `tar` to overwrite the corrupted files.
+3. **Prevention:** Created a `.gitattributes` file declaring `*.png` and `*.zip` as binary files to prevent future line-ending corruption during Git checkouts or updates.
+
+## 249. Tactical Pause Button Unresponsive State Fix
+> "Fix the issue in Tactical button because it's not working when the player clicks it or presses it."
+
+**Result:** Fixed a bug where the Tactical Pause button and keybinds became unresponsive on restarted game sessions. Because the `GameCanvas` component instance is reused during direct restarts (using the `gameKey` prop for resets without unmounting the React element), the component's internal refs `isDeadRef.current` and `isPausedRef.current` retained their values from the previous game session. If a player had died in the previous session, `isDeadRef.current` remained `true` in the next run, which caused `togglePause()` to return immediately. Resolved by resetting `isDeadRef.current`, `isPausedRef.current`, `isPaused` state, `isMapExpanded` state, and `pausedQueueRefs` to their default false/empty states at the beginning of the `GameCanvas` `useEffect` block.
+
+## 250. Itch.io Subfolder Deployment Asset Path Fix
+> "There's no display here."
+
+**Result:** Fixed a bug causing a blank screen and missing assets when deploying the built game on itch.io.
+1. **Asset Path Resolution:** Set `base: './'` in `vite.config.ts` so Vite compiles all script and style links inside `index.html` as relative rather than absolute paths.
+2. **Runtime Code Path Resolution:** Modified references to game graphics and sprite resources in `voidFleet.ts`, `GameCanvas.tsx`, `Shop.tsx`, `MainMenu.tsx`, and `MenuBackground.tsx` to use relative paths (e.g. `VoidFleetPack/...` and `assets/...` instead of `/VoidFleetPack/...` and `/assets/...`). This prevents assets from 404ing under itch.io's sandboxed subfolder layout.
+3. **Redeployment:** Rebuilt the project (`npm run build`) and generated an updated, relative-path-safe zip file `SpaceSurvival_Final.zip`.
+
+## 251. Comprehensive Game Documentation (README.md)
+> "Create a game documentation for the README file. Make it step-by-step, like a tutorial mode. all ofthe features and the HUD in the game, all the buttons, and all of the stuff that the player visualizes to the game.  must have a description/eplanation"
+
+**Result:** Completely rewrote the `README.md` to serve as a comprehensive game guide and step-by-step tutorial. It documents:
+1. **Game Overview:** Genre, engine, platforms, and core CPU scheduling mechanics.
+2. **Getting Started:** Installation guidelines, building, and running.
+3. **Boot Sequence & Main Menu:** Descriptions of visual cues, transition states, and the interactive functionalities of the 5 main buttons (Start, Upgrades, Level Select, Database, Mission Report).
+4. **Controls & Input:** Grid-based mapping of WASD movement, mouse aiming/priorities, and active ability keys (`Shift/C`, `E`, `F`, `Q`, `Y`, `G`, etc.).
+5. **HUD Breakdown:** Detailed description of every screen quadrant (Hull Telemetry, Mission Telemetry, Target CPU Queue, Radar, Ability Triggers).
+6. **Core Game Systems:** OS algorithms (FCFS, RR, HRRN) mapped as drones, active abilities, enemy classes, boss mechanics, star charts, hangar upgrades, codex databases, and itch.io deployment steps.

@@ -94,7 +94,7 @@ export function MainMenu({
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: "url(/assets/Mainmenu.jpg)",
+          backgroundImage: "url(assets/Mainmenu.jpg)",
           // Darken the image slightly so UI pops out
           boxShadow: "inset 0 0 200px rgba(0,0,0,0.8)",
         }}

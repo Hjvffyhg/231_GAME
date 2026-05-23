@@ -37,7 +37,7 @@ export function MenuBackground() {
       */}
       <div className="absolute inset-0 moving-illusion flex items-center justify-center">
         <img
-          src="/assets/Mainmenu.jpg"
+          src="assets/Mainmenu.jpg"
           alt="Menu Background"
           className="w-[110%] h-[110%] object-cover max-w-none transition-transform duration-700 ease-out"
           style={{
