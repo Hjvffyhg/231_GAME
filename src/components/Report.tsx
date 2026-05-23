@@ -1,583 +1,103 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  Eye,
-  Activity,
-  Layers,
-  Target,
-  AlertTriangle,
-  Zap,
-  ArrowLeft,
-  BrainCircuit,
-  FileText,
-} from "lucide-react";
-import { cn } from "../lib/utils";
-import { Mermaid } from "./Mermaid";
-import { initAuth, googleSignIn, getAccessToken, User } from "../lib/auth";
+import React from "react";
+import { ArrowLeft, Target, Award, Clock, Database, Zap, Cpu } from "lucide-react";
 
-const TABS = [
-  { id: "summary", icon: Eye, label: "Observation Summary" },
-  { id: "phases", icon: Activity, label: "Behavioral Phases" },
-  { id: "adaptation", icon: Layers, label: "Swarm Adaptation" },
-  { id: "flow", icon: Target, label: "Threat Flowchart" },
-  { id: "metrics", icon: AlertTriangle, label: "Lethality Metrics" },
-];
-
-export function Report({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState("summary");
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportMessage, setExportMessage] = useState("");
-  const [needsAuth, setNeedsAuth] = useState(false);
-
-  useEffect(() => {
-    // Initialize auth listener
-    const unsubscribe = initAuth(
-      (user, token) => setNeedsAuth(false),
-      () => setNeedsAuth(true),
+export function Report({ onBack, stats }: { onBack: () => void; stats?: any }) {
+  if (!stats) {
+    return (
+      <div className="absolute inset-0 bg-[#0A0F1F] font-sans text-slate-300 flex flex-col items-center justify-center p-8">
+        <Database className="w-16 h-16 text-[#00D9FF]/30 mb-6" />
+        <h2 className="text-2xl font-mono text-[#00D9FF] uppercase tracking-widest mb-2">No Telemetry Available</h2>
+        <p className="text-center max-w-md text-slate-400 mb-8 font-light">
+          No combat data found for this session. A Tactical Frame must complete or abort a mission to record telemetry.
+        </p>
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 px-6 py-3 border border-[#00D9FF]/50 hover:bg-[#00D9FF]/10 text-[#00D9FF] font-mono tracking-widest uppercase transition-all"
+          style={{ clipPath: "polygon(5% 0, 100% 0, 95% 100%, 0 100%)" }}
+        >
+          <ArrowLeft size={16} /> Return to Menu
+        </button>
+      </div>
     );
-    return () => unsubscribe();
-  }, []);
-
-  const handleExportDocs = async () => {
-    try {
-      setIsExporting(true);
-      setExportMessage("Authenticating...");
-
-      let token = await getAccessToken();
-      if (!token) {
-        setNeedsAuth(true);
-        const authResult = await googleSignIn();
-        if (authResult?.accessToken) {
-          token = authResult.accessToken;
-          setNeedsAuth(false);
-        } else {
-          // If the returns null, it's typically because the user safely closed the popup.
-          setExportMessage("");
-          return;
-        }
-      }
-
-      setExportMessage("Creating document...");
-
-      const docTitle = `Mission Report - ${new Date().toLocaleDateString()}`;
-
-      // Create an empty document
-      const createRes = await fetch(
-        "https://docs.googleapis.com/v1/documents",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title: docTitle }),
-        },
-      );
-
-      if (!createRes.ok) throw new Error("Failed to create document");
-      const docData = await createRes.json();
-      const documentId = docData.documentId;
-
-      setExportMessage("Writing content...");
-
-      // Update document content
-      const requests = [
-        {
-          insertText: {
-            location: { index: 1 },
-            text: `Mission Report\n\nEXECUTIVE SUMMARY\nOur telemetry indicates the Kla'ed are not attacking randomly. They exhibit three distinct psychological phases that escalate as our Tactical Frames gather Credits.\n\nPhase 1: Fixation\nThe swarm behaves predictably, hyper-focusing on the oldest perceived threat before moving to the next.\n\nPhase 2: Restlessness\nThe hive-mind fragments its attention. It begins cycling its aggression rapidly across all available presences, overwhelming single-target defenses.\n\nPhase 3: Vindictive Learning\nThe most dangerous state. The swarm recognizes which presences have been ignored and violently prioritizes them. The longer it watches you, the more vicious the execution.\n\nLETHALITY FORECAST\nFixated: Manageable (Low Unpredictability)\nRestless: Overwhelming (Even Pressure)\nVindictive: Extremely Fatal (Vengeful Spiking)\n`,
-          },
-        },
-      ];
-
-      const updateRes = await fetch(
-        `https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ requests }),
-        },
-      );
-
-      if (!updateRes.ok) throw new Error("Failed to update document");
-
-      setExportMessage("Export complete!");
-      setTimeout(() => setExportMessage(""), 3000); // Clear message
-    } catch (err: any) {
-      console.error(err);
-      setExportMessage("Export failed.");
-      setTimeout(() => setExportMessage(""), 3000);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  return (
-    <div className="absolute inset-0 w-full h-full bg-[#0A0F1F] overflow-hidden flex flex-col font-sans text-slate-200 p-4 md:p-8">
-      {/* Background Holographic Grid Effect */}
-      <div
-        className="absolute inset-0 z-0 opacity-10 pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at center, #38bdf8 0%, transparent 60%), linear-gradient(rgba(56,189,248,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.1) 1px, transparent 1px)",
-          backgroundSize: "100% 100%, 40px 40px, 40px 40px",
-        }}
-      />
-
-      {/* Header */}
-      <div className="relative z-10 flex justify-between items-center mb-4">
-        {onBack ? (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0d1428] border border-[#00D9FF]/40/50 hover:border-[#00D9FF] text-[#00D9FF] hover:text-[#5ce5ff] transition-all font-mono text-xs tracking-widest uppercase w-max shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-            style={{ clipPath: "polygon(10% 0, 100% 0, 90% 100%, 0% 100%)" }}
-          >
-            <ArrowLeft size={16} /> Close Terminal
-          </button>
-        ) : (
-          <div />
-        )}
-
-        <div className="flex items-center gap-3">
-          {exportMessage && (
-            <span className="text-xs font-mono text-[#00D9FF] animate-pulse uppercase tracking-widest mr-2">
-              {exportMessage}
-            </span>
-          )}
-          <button
-            onClick={handleExportDocs}
-            disabled={isExporting}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-900/40 border border-[#6366F1]/50 hover:bg-indigo-800/60 text-indigo-300 hover:text-white transition-all font-mono text-xs tracking-widest uppercase disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(99,102,241,0.2)]"
-            style={{ clipPath: "polygon(10% 0, 100% 0, 90% 100%, 0% 100%)" }}
-          >
-            <FileText size={16} />{" "}
-            {isExporting
-              ? "Exporting..."
-              : needsAuth
-                ? "Sign In & Export"
-                : "Export to Docs"}
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="relative z-10 flex flex-col md:flex-row h-full w-full bg-[#0A0F1F]/80 border border-[#00D9FF]/40/50 backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.1)]"
-        style={{
-          clipPath: "polygon(0 0, 98% 0, 100% 2%, 100% 100%, 2% 100%, 0 98%)",
-        }}
-      >
-        {/* Sidebar Content Menu */}
-        <div className="w-full md:w-72 bg-[#0d1428]/50 border-b md:border-b-0 md:border-r border-[#00D9FF]/40/50 flex flex-col p-4 shrink-0 overflow-x-auto md:overflow-y-auto custom-scrollbar relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-transparent via-cyan-500/20 to-transparent"></div>
-
-          <h2 className="hidden md:flex items-center gap-2 text-[10px] font-mono font-bold text-[#00D9FF] uppercase tracking-widest mb-6 px-2">
-            <div className="w-2 h-2 bg-[#00D9FF] animate-pulse"></div>
-            Mission Report
-          </h2>
-
-          <nav className="flex flex-row md:flex-col gap-2 md:gap-1.5 w-max md:w-auto">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 text-xs font-mono tracking-wider transition-all duration-300 relative text-left whitespace-nowrap uppercase group",
-                    isActive
-                      ? "text-[#5ce5ff] bg-[#00D9FF]/20/40 border border-[#00D9FF]/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                      : "text-slate-400 border border-transparent hover:border-[#00D9FF]/40/50 hover:text-cyan-100 hover:bg-[#151f3d]/50",
-                  )}
-                  style={{
-                    clipPath: "polygon(5% 0, 100% 0, 95% 100%, 0 100%)",
-                  }}
-                >
-                  {isActive && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00D9FF] shadow-[0_0_10px_#00D9FF]"></div>
-                  )}
-                  <Icon
-                    size={16}
-                    className={cn(
-                      "transition-colors shrink-0",
-                      isActive
-                        ? "text-[#00D9FF]"
-                        : "text-slate-500 group-hover:text-[#00D9FF]/50",
-                    )}
-                  />
-                  <span className="flex-1 truncate drop-shadow-md">
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Main Report Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth custom-scrollbar relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-4xl mx-auto"
-            >
-              <Content tab={activeTab} />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Content({ tab }: { tab: string }) {
-  switch (tab) {
-    case "summary":
-      return <ExecutiveSummary />;
-    case "phases":
-      return <BehavioralPhases />;
-    case "adaptation":
-      return <Adaptation />;
-    case "flow":
-      return <ThreatFlowchart />;
-    case "metrics":
-      return <Metrics />;
-    default:
-      return null;
   }
-}
 
-function TechCard({
-  children,
-  title,
-  icon: Icon,
-  color = "cyan",
-  className = "",
-}: any) {
-  const colors = {
-    cyan: "border-[#00D9FF]/30 bg-[#0d1428]/60 text-[#00D9FF] shadow-[#00D9FF]/10",
-    rose: "border-[#EF4444]/30 bg-[#0d1428]/60 text-[#EF4444] shadow-[#EF4444]/10",
-    emerald:
-      "border-emerald-500/30 bg-[#0d1428]/60 text-emerald-400 shadow-emerald-500/10",
-    indigo:
-      "border-[#6366F1]/30 bg-[#0d1428]/60 text-[#6366F1] shadow-[#6366F1]/10",
-    amber:
-      "border-amber-500/30 bg-[#0d1428]/60 text-amber-400 shadow-amber-500/10",
-    sky: "border-sky-500/30 bg-[#0d1428]/60 text-sky-400 shadow-sky-500/10",
-  };
-  const activeColor = colors[color as keyof typeof colors];
+  const { score, kills, credits, timeSurvived, algorithm = "FCFS" } = stats;
+  const minutes = Math.floor(timeSurvived / 60);
+  const seconds = Math.floor(timeSurvived % 60);
+  const timeString = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
   return (
-    <div
-      className={cn(
-        "relative p-6 border backdrop-blur-sm transition-all",
-        activeColor,
-        className,
-      )}
-      style={{
-        clipPath: "polygon(0 0, 95% 0, 100% 15%, 100% 100%, 5% 100%, 0 85%)",
-      }}
-    >
-      <div
-        className={`absolute top-0 right-0 w-6 h-6 bg-${color}-500/20`}
-        style={{ clipPath: "polygon(100% 0, 0 0, 100% 100%)" }}
-      ></div>
-
-      {title && (
-        <h3
-          className={`text-lg font-mono font-bold flex items-center gap-3 uppercase tracking-widest mb-4 border-b border-${color}-900/50 pb-3`}
-        >
-          {Icon && (
-            <span
-              className={`bg-${color}-950 p-2 border border-${color}-900/50`}
-              style={{ clipPath: "polygon(20% 0, 100% 0, 80% 100%, 0% 100%)" }}
-            >
-              <Icon size={18} />
-            </span>
-          )}
-          {title}
-        </h3>
-      )}
-      <div className="text-slate-300 font-sans font-light leading-relaxed">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ExecutiveSummary() {
-  return (
-    <div className="space-y-8">
-      <div className="space-y-2 border-l-4 border-[#00D9FF] pl-4">
-        <h2 className="text-3xl font-mono font-black tracking-[0.2em] text-white uppercase drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">
-          Swarm Observation
-        </h2>
-        <p className="text-sm font-mono text-[#00D9FF]/80 tracking-widest uppercase">
-          Analysis of Kla'ed Behavioral Shifts During Engagements
-        </p>
-      </div>
-
-      <TechCard color="cyan">
-        <p className="mb-6 text-lg">
-          Our telemetry indicates the Kla'ed are not attacking randomly. They
-          exhibit three distinct psychological phases that escalate as our
-          Tactical Frames gather Credits.
-        </p>
-        <div className="space-y-4 grid grid-cols-1">
-          <div
-            className="bg-[#0A0F1F]/80 border border-[#151f3d] p-4 flex gap-4 items-start"
-            style={{ clipPath: "polygon(0 0, 100% 0, 98% 100%, 0 100%)" }}
-          >
-            <div className="bg-[#EF4444]/20 text-[#EF4444] p-2 shrink-0 border border-[#EF4444]/30">
-              <Eye size={16} />
-            </div>
-            <div>
-              <strong className="text-[#EF4444] font-mono tracking-widest uppercase block mb-1">
-                Phase 1: Fixation
-              </strong>{" "}
-              The swarm behaves predictably, hyper-focusing on the oldest
-              perceived threat before moving to the next.
-            </div>
-          </div>
-          <div
-            className="bg-[#0A0F1F]/80 border border-[#151f3d] p-4 flex gap-4 items-start"
-            style={{ clipPath: "polygon(0 0, 100% 0, 98% 100%, 0 100%)" }}
-          >
-            <div className="bg-emerald-500/20 text-emerald-400 p-2 shrink-0 border border-emerald-500/30">
-              <Activity size={16} />
-            </div>
-            <div>
-              <strong className="text-emerald-400 font-mono tracking-widest uppercase block mb-1">
-                Phase 2: Restlessness
-              </strong>{" "}
-              The hive-mind fragments its attention. It begins cycling its
-              aggression rapidly across all available presences, overwhelming
-              single-target defenses.
-            </div>
-          </div>
-          <div
-            className="bg-[#0A0F1F]/80 border border-[#151f3d] p-4 flex gap-4 items-start"
-            style={{ clipPath: "polygon(0 0, 100% 0, 98% 100%, 0 100%)" }}
-          >
-            <div className="bg-[#6366F1]/20 text-[#6366F1] p-2 shrink-0 border border-[#6366F1]/30">
-              <BrainCircuit size={16} />
-            </div>
-            <div>
-              <strong className="text-[#6366F1] font-mono tracking-widest uppercase block mb-1">
-                Phase 3: Vindictive Learning
-              </strong>{" "}
-              The most dangerous state. The swarm recognizes which presences
-              have been ignored and violently prioritizes them. The longer it
-              watches you, the more vicious the execution.
-            </div>
+    <div className="absolute inset-0 bg-[#0A0F1F] font-sans text-slate-300 flex flex-col overflow-hidden">
+      {/* Background Styling */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(8,145,178,0.1)_0%,rgba(2,6,23,1)_80%)] pointer-events-none"></div>
+      
+      {/* Header */}
+      <div className="relative z-10 p-6 sm:p-8 flex items-center justify-between border-b border-[#00D9FF]/40/50 bg-[#0A0F1F]/80 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-4">
+          <Database className="w-8 h-8 text-[#00D9FF]" />
+          <div>
+            <h1 className="text-2xl font-mono font-bold text-white tracking-widest uppercase">
+              Mission Report
+            </h1>
+            <p className="text-sm text-[#00D9FF]/80 uppercase tracking-widest">
+              Combat Telemetry Analytics
+            </p>
           </div>
         </div>
-      </TechCard>
-    </div>
-  );
-}
-
-function BehavioralPhases() {
-  return (
-    <div className="space-y-8">
-      <div className="space-y-2 border-l-4 border-[#00D9FF] pl-4">
-        <h2 className="text-3xl font-mono font-black tracking-[0.2em] text-white uppercase">
-          Psychological Shifts
-        </h2>
-        <p className="text-sm font-mono text-[#00D9FF]/80 tracking-widest uppercase">
-          Deep dive into alien cognition.
-        </p>
-      </div>
-      <div className="grid gap-6">
-        <TechCard title="The Fixated State (Alpha)" color="rose" icon={Eye}>
-          <p>
-            Initial scout vessels and early swarms exhibit absolute tunnel
-            vision. They will commit entirely to an assault vector until the
-            threat is annihilated, completely ignoring secondary disturbances.
-            They are blindingly stubborn.
-          </p>
-        </TechCard>
-        <TechCard
-          title="The Restless State (Beta)"
-          color="emerald"
-          icon={Activity}
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 border border-[#1e2b52] bg-[#0d1428]/80 hover:bg-[#151f3d] text-slate-300 px-4 py-2 font-bold text-sm tracking-widest uppercase transition-colors group"
         >
-          <p>
-            Upon sensing resistance, the swarm abandons its stubbornness for
-            frantic multitasking. The hive-mind vibrates constantly, shifting
-            its animosity from target to target in rapid, unpredictable sweeps.
-            Isolation becomes impossible.
-          </p>
-        </TechCard>
-        <TechCard
-          title="The Vindictive State (Omega)"
-          color="indigo"
-          icon={BrainCircuit}
-        >
-          <p>
-            A terrifying adaptation. The swarm calculates "Hostility
-            Resonance"—the longer a ship survives in their space, the more
-            infuriated the Kla'ed become. They learn to ignore immediate
-            distractions to eliminate long-standing annoyances.
-          </p>
-        </TechCard>
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="hidden sm:inline">MAIN MENU</span>
+        </button>
       </div>
-    </div>
-  );
-}
 
-function Adaptation() {
-  return (
-    <div className="space-y-8">
-      <div className="space-y-2 border-l-4 border-[#00D9FF] pl-4">
-        <h2 className="text-3xl font-mono font-black tracking-[0.2em] text-white uppercase">
-          Hive Adaptations
-        </h2>
-      </div>
-      <div className="space-y-6">
-        <TechCard title="Reaction to Threat Presence" color="cyan">
-          <div className="space-y-4 font-mono text-sm">
-            <div className="flex gap-4 border-b border-[#00D9FF]/40/30 pb-4">
-              <span className="text-[#EF4444] font-bold w-24 shrink-0">
-                FIXATED
-              </span>
-              <span className="text-slate-300">
-                If a large presence arrives, it completely blocks the swarm's
-                senses preventing them from noticing anything else.
-              </span>
-            </div>
-            <div className="flex gap-4 border-b border-[#00D9FF]/40/30 pb-4">
-              <span className="text-emerald-400 font-bold w-24 shrink-0">
-                RESTLESS
-              </span>
-              <span className="text-slate-300">
-                The swarm treats every presence equally, diluting its wrath but
-                guaranteeing no blind spots.
-              </span>
-            </div>
-            <div className="flex gap-4">
-              <span className="text-[#6366F1] font-bold w-24 shrink-0">
-                VINDICTIVE
-              </span>
-              <span className="text-slate-300">
-                The swarm stalks the fringes, building resentment. The longer it
-                watches uninterrupted, the deadlier its eventual strike.
-              </span>
-            </div>
+      {/* Main Content */}
+      <div className="relative z-10 flex-1 p-6 md:p-12 overflow-y-auto w-full max-w-5xl mx-auto flex flex-col gap-8 custom-scrollbar">
+        <div className="bg-[#00D9FF]/10 border border-[#00D9FF]/30 p-8 flex flex-col items-center justify-center relative" style={{ clipPath: "polygon(5% 0, 100% 0, 95% 100%, 0 100%)" }}>
+           <div className="absolute w-2 h-full left-0 top-0 bg-[#00D9FF] shadow-[0_0_10px_#00D9FF]"></div>
+           <p className="text-sm font-mono text-[#00D9FF]/70 tracking-widest uppercase mb-2">Final Operation Score</p>
+           <h2 className="text-6xl font-black font-mono text-white tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">{score}</h2>
+           
+           <div className="mt-4 flex items-center gap-2 bg-[#0d1428]/80 px-4 py-2 border border-[#00D9FF]/30">
+              <Cpu className="w-4 h-4 text-[#00D9FF]" />
+              <span className="text-sm font-mono tracking-widest uppercase text-slate-300">OS Schedule Algo: <strong className="text-[#00D9FF]">{algorithm}</strong></span>
+           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          {/* Card 1: Kills */}
+          <div className="bg-[#0d1428]/80 border border-rose-500/30 p-6 flex flex-col relative" style={{ clipPath: "polygon(0 0, 90% 0, 100% 10%, 100% 100%, 0 100%)" }}>
+             <Target className="w-10 h-10 text-rose-500 mb-4 opacity-50" />
+             <p className="text-xs font-mono text-rose-400/70 tracking-widest uppercase mb-1">Hostiles Neutralized</p>
+             <h3 className="text-3xl font-mono text-rose-100">{kills} Units</h3>
           </div>
-        </TechCard>
-      </div>
-    </div>
-  );
-}
 
-function ThreatFlowchart() {
-  const chart = `
-  flowchart TD
-      classDef default fill:#020617,stroke:#00D9FF,stroke-width:1px,color:#e2e8f0,font-family:monospace;
-      classDef active fill:#082f49,stroke:#38bdf8,stroke-width:2px,color:#bae6fd,font-family:monospace;
-      classDef action fill:#4c1d95,stroke:#6366F1,stroke-width:2px,color:#ddd6fe,font-family:monospace;
-      S[Swarm detects intrusion] --> Q[(Observation Memory)]
-      Q --> Eval{State Recognition}
-      Eval -- Fixation --> P_FCFS[Obsess over first contact]
-      Eval -- Restlessness --> P_RR[Distribute animosity]
-      Eval -- Vindictive --> P_HRRN[Identify highest resentment]
-      P_FCFS --> Execute[Violent Execution]:::active
-      P_RR --> Execute
-      P_HRRN --> Execute
-      Execute --> Check{Is threat eliminated?}
-      Check -- Yes --> End[Silence]:::action
-      Check -- No --> Q_Update[Memory thickens]
-      Q_Update --> Q
-  `;
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2 border-l-4 border-[#00D9FF] pl-4">
-        <h2 className="text-3xl font-mono font-black tracking-[0.2em] text-white uppercase">
-          Cognitive Flow
-        </h2>
-      </div>
-      <TechCard color="cyan">
-        <div className="bg-[#0A0F1F]/80 border border-[#00D9FF]/40/50 p-6 overflow-hidden flex justify-center">
-          <Mermaid chart={chart} />
+          {/* Card 2: Time */}
+          <div className="bg-[#0d1428]/80 border border-emerald-500/30 p-6 flex flex-col relative" style={{ clipPath: "polygon(0 0, 90% 0, 100% 10%, 100% 100%, 0 100%)" }}>
+             <Clock className="w-10 h-10 text-emerald-500 mb-4 opacity-50" />
+             <p className="text-xs font-mono text-emerald-400/70 tracking-widest uppercase mb-1">Combat Uptime</p>
+             <h3 className="text-3xl font-mono text-emerald-100">{timeString}</h3>
+          </div>
+
+          {/* Card 3: Credits */}
+          <div className="bg-[#0d1428]/80 border border-amber-500/30 p-6 flex flex-col relative" style={{ clipPath: "polygon(0 0, 90% 0, 100% 10%, 100% 100%, 0 100%)" }}>
+             <Award className="w-10 h-10 text-amber-500 mb-4 opacity-50" />
+             <p className="text-xs font-mono text-amber-400/70 tracking-widest uppercase mb-1">Harvested Credits</p>
+             <h3 className="text-3xl font-mono text-amber-100">+{credits} CR</h3>
+          </div>
         </div>
-      </TechCard>
-    </div>
-  );
-}
 
-function Metrics() {
-  return (
-    <div className="space-y-8">
-      <div className="space-y-2 border-l-4 border-[#00D9FF] pl-4">
-        <h2 className="text-3xl font-mono font-black tracking-[0.2em] text-white uppercase">
-          Lethality Forecast
-        </h2>
-        <p className="text-sm font-mono text-[#00D9FF]/80 tracking-widest uppercase">
-          Projected dangers of swarm states.
-        </p>
-      </div>
-
-      <TechCard color="cyan">
-        <div
-          className="bg-[#0d1428]/60 border border-[#1e2b52] overflow-hidden"
-          style={{
-            clipPath: "polygon(0 0, 100% 0, 100% 95%, 98% 100%, 0 100%)",
-          }}
-        >
-          <table className="w-full text-sm text-left">
-            <thead className="bg-[#0A0F1F]/80 text-[#00D9FF] font-mono uppercase tracking-widest text-[10px] border-b border-[#00D9FF]/40/50">
-              <tr>
-                <th className="px-6 py-4">Observed Trait</th>
-                <th className="px-6 py-4 text-[#EF4444]">Fixated</th>
-                <th className="px-6 py-4 text-emerald-500">Restless</th>
-                <th className="px-6 py-4 text-[#6366F1]">Vindictive</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50 text-slate-300 font-mono text-xs">
-              <tr className="hover:bg-[#00D9FF]/20/20 transition-colors">
-                <td className="px-6 py-4 font-bold text-white">
-                  Unpredictability
-                </td>
-                <td className="px-6 py-4">Low</td>
-                <td className="px-6 py-4">High</td>
-                <td className="px-6 py-4">Medium</td>
-              </tr>
-              <tr className="hover:bg-[#00D9FF]/20/20 transition-colors">
-                <td className="px-6 py-4 font-bold text-white">
-                  Pressure Distribution
-                </td>
-                <td className="px-6 py-4">Uneven (Clustered)</td>
-                <td className="px-6 py-4">Even</td>
-                <td className="px-6 py-4">Spiking (Vengeful)</td>
-              </tr>
-              <tr className="hover:bg-[#00D9FF]/20/20 transition-colors">
-                <td className="px-6 py-4 font-bold text-white">
-                  Perceived Intelligence
-                </td>
-                <td className="px-6 py-4">Dumb / Obsessive</td>
-                <td className="px-6 py-4">Frantic / Manic</td>
-                <td className="px-6 py-4">Calculated / Cruel</td>
-              </tr>
-              <tr className="hover:bg-[#00D9FF]/20/20 transition-colors">
-                <td className="px-6 py-4 font-bold text-white">
-                  Threat level to Frames
-                </td>
-                <td className="px-6 py-4">Manageable</td>
-                <td className="px-6 py-4">Overwhelming</td>
-                <td className="px-6 py-4">Extremely Fatal</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="mt-8 border-l border-slate-700 pl-6">
+           <h4 className="text-lg font-mono font-bold text-white mb-2 uppercase tracking-widest">Post-Operation Briefing</h4>
+           <p className="font-light text-slate-400 leading-relaxed font-sans max-w-3xl">
+             The tactical frame recorded a combat uptime of <strong className="text-white">{timeString}</strong> against the Kla'ed swarm. A total of <strong className="text-white">{kills}</strong> entities were destroyed, converting enemy data cores into <strong className="text-white">{credits} Credits</strong> for use in the Hangar Fleet upgrades. 
+             <br/><br/>
+             Targeting drone OS performance utilized the <strong className="text-white">{algorithm}</strong> architecture scheduling algorithm during this run. Adjust OS scheduling queues accordingly for future deployments.
+           </p>
         </div>
-      </TechCard>
+      </div>
     </div>
   );
 }

@@ -1546,3 +1546,64 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 > "can make the readme.md like this? like the ss/picture is already visible there"
 
 **Result:** Removed the collapsible `<details>` and `<summary>` HTML tags around the screenshots section in `README.md` to ensure all 14 attached preview images display instantly by default without requiring the user to unfold the section.
+
+## 237. Rename Screenshot Uploads
+> "I uploaded the images directly here to resolve the problem Rename it and change the space using _"
+
+**Result:** Recognized that the user directly uploaded the screenshot image assets to the `/docs/screenshots/` workspace directory. Executed a Node.js filesystem script to iterate over the `/docs/screenshots/` folder and replace all space characters in the image filenames with underscores (`_`). This automatically maps the newly uploaded image files to the existing reference links in the `README.md` and successfully resolves any rendering errors.
+
+## 238. Itch.io Deployment Guide
+> "GUIDE FOR SUBMISSION To make the game playable directly in itch.io..."
+
+**Result:** Digested the school's explicit itch.io HTML submission guidelines and adapted them for this specific Vite/React tech stack. Created a new markdown document at `/docs/ITCH_IO_DEPLOYMENT.md` providing step-by-step instructions on running `npm run build` and correctly zipping the output `dist` folder to ensure it runs properly as an embeddable HTML5 browser game. Added a link to this guide at the bottom of the `README.md`.
+
+## 239. Organize Markdown Files
+> "what are function of these buttons"
+> "Make an MD file for a prompt, send it to Canva to edit"
+> "organized all the md file"
+
+**Result:** Created `/docs/CANVA_POSTER_PROMPT.md` to format the Canva poster layout requirements based on the school's 1/8 illustration board sizing. Afterwards, conducted a full repository cleanup of markdown files. Consolidated all school-related requirements (`DEMO_SCRIPT.md`, `FINAL_PRESENTATION.md`, `ITCH_IO_DEPLOYMENT.md`, `CANVA_POSTER_PROMPT.md`) into the highly specific `/docs/School_Requirements/` folder. Moved `GDD.md`, `TERMINOLOGY.md`, and the `gameDemo.md` (renamed to `GAME_WALKTHROUGH.md`) into the unified `/docs/game_design/` sub-directory. Validated that root files (`plan.md`, `README.md`, `PROMPTS.md`, `AGENTS.md`) remained intact as required by system mandates.
+
+## 240. HUD Demo Description Script
+> "I want you to create a demo description for all of the HUD... My plan is to create and show the story behind this game... Then, show the gameplay. Before the player moved the mouse, for example, there's a pause. Then, the description shows up."
+
+**Result:** Created `/docs/School_Requirements/HUD_DEMO_SCRIPT.md`. Designed a comprehensive, sequential live presentation script that aligns with the user's flow. It starts with the lore/story introduction, walks through every functional button on the Main Menu and its subsequent visual screen, then instructs the presenter to enter the game, pause, and sequentially explain every HUD element (Health, Credits, OS Schedulers, Radar, Target Queue) before resuming live gameplay.
+  
+## 241. Update HUD Demo Script Interactions
+> "Update the HUD demo script. Write all interactions of the user: - From moving the spaceship through WASD - To the end of the game."
+
+**Result:** Modified `/docs/School_Requirements/HUD_DEMO_SCRIPT.md` to include explicit WASD evasion controls and live gameplay resumption instructions. Added step-by-step presenter scripting for dynamically switching the CPU OS Algorithms mid-combat, and structured the final phase of the script to cover intentionally reaching the 'Game Over' / 'Mission Complete' states and exploring the Mission Report metrics.
+
+## 242. Align HUD Script with Codebase
+> "I think this button doesn't align to the game. I'll make sure to double-check this one. Based on the description, it didn't align to the game as I see."
+
+**Result:** Audited the `HUD_DEMO_SCRIPT.md` against the actual `Codex.tsx` and `Report.tsx` components. Corrected the "DATABASE" button description to accurately reflect that it displays lore surrounding the Kla'ed armada, Credits, and the Tactical Frame. Corrected the "MISSION REPORT" button description from the Main Menu to accurately explain that it displays deep-dive Swarm Observations, Behavioral Phases, and a Cognitive Threat Flowchart of the alien hive-mind rather than post-match performance metrics.
+  
+## 243. Align HUD Demo Script - Main Menu Updates
+> "follow these here are the functions of the buttons on the Main Menu: START MISSION... UPGRADES... LEVEL SELECT... DATABASE... MISSION REPORT..."
+
+**Result:** Updated `HUD_DEMO_SCRIPT.md` again, replacing in all precise descriptions strictly provided by the user for the Main Menu buttons for the live presentation.
+
+## 244. Main Menu Align UI with Documented Script
+> "Now, update the game. Align with this app functionality of buttons. It seems to center in the align. The buttons when the button is pressed, the pages didn't align as the game plan."
+
+**Result:** Overhauled code components to physically match the user's documented definitions for the Main Menu buttons. 
+1. `GameCanvas.tsx` modified to pass detailed telemetry (`kills`, `credits`, `timeSurvived`, and `algorithm`) to the game-over payload. 
+2. `App.tsx` state extended to store the most recent run's stats (`lastRunStats`). 
+3. `Codex.tsx` updated with a new "Swarm Telemetry Logs" category, moving the old Swarm Observation lore over to the Database function. 
+4. `Report.tsx` (Targeted by the MISSION REPORT button) was fully rewritten from a lore screen into a genuine Analytics HUD capturing the latest `score`, `kills`, `uptime`, and the `OS Scheduling Algorithm` used during the sortie.
+
+## 245. Fix Mission Report Button 
+> "Mission report button. It's not working."
+
+**Result:** Fixed a major issue where telemetry for `credits` and `uptime` was missing from the state payload, leading to `NaN` outputs in the analytics. Additionally, added a dedicated "VIEW REPORT" interactive button to the Game Over screen allowing pilots to open the Mission Report summary right after their run.
+
+## 246. Enforce Desktop-Only Environment
+> "I disabled the mobile version of this game and the tablet version of this game. This game is only playable by test web, laptop, as long as it has a desktop,"
+
+**Result:** Set a hard viewport enforcement in `App.tsx` matching Tailwind's `lg:` (1024px minimum width) layout block. If interpreted beneath this dimension, the game application is entirely hidden and replaced by a responsive Warning Screen ("Desktop Required"). Completely purged `VirtualJoystick.tsx` overlay components, dead code, and event listeners from the runtime environment. Forced `isTouchDevice` to static `false` to prevent internal combat logic from executing mobile-auto-aiming or hiding standard PC mouse crosshairs on touchscreen-enabled laptops.
+
+## 247. Fix Mission Abort Telemetry Gap
+> "Animation buttons. There are no elements available here. Even I, a technical frame, must be complete or abort mission to record. To primary, there's no file or record here. Even I start playing the game and end it."
+
+**Result:** Fixed a vital logical flow where aborting a mission via the Pause Menu silently returned the user to the Main Menu without reporting telemetry back to the top-level application state. The "ABORT MISSION" command now forcefully transitions the simulation into a proper Game Over state (Cause: "MISSION ABORTED") and dispatches the session's elapsed time, kills, and earned credits to the Mission Report. The application now also caches the report persistently in `localStorage` so pilots won't lose their last run's diagnostics on a hard page refresh.

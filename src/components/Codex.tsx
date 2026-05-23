@@ -124,6 +124,36 @@ const CODEX_ENTRIES: CodexEntry[] = [
       </div>
     ),
   },
+  {
+    id: "swarm_telemetry",
+    title: "Swarm Telemetry Logs",
+    category: "enemy",
+    icon: <Database className="w-5 h-5 text-indigo-400" />,
+    content: (
+      <div className="space-y-4">
+        <p>
+          <strong>Observation Summary:</strong><br />
+          Our telemetry indicates the Kla'ed are not attacking randomly. They exhibit three distinct psychological phases that escalate as our Tactical Frames gather Credits.
+        </p>
+        <div className="pl-4 border-l-2 border-rose-500/50">
+          <strong>Phase 1: Fixation</strong><br />
+          The swarm behaves predictably, hyper-focusing on the oldest perceived threat before moving to the next. Initial scout vessels exhibit absolute tunnel vision.
+        </div>
+        <div className="pl-4 border-l-2 border-emerald-500/50">
+          <strong>Phase 2: Restlessness</strong><br />
+          Upon sensing resistance, the hive-mind fragments its attention. It begins cycling its aggression rapidly across all available presences, overwhelming single-target defenses.
+        </div>
+        <div className="pl-4 border-l-2 border-indigo-500/50">
+          <strong>Phase 3: Vindictive Learning</strong><br />
+          The most dangerous state. The swarm recognizes which presences have been ignored and violently prioritizes them. The longer it watches you, the more vicious the execution.
+        </div>
+        <p>
+          <strong>Lethality Forecast:</strong><br />
+          Fixated (Manageable), Restless (Overwhelming), Vindictive (Extremely Fatal).
+        </p>
+      </div>
+    ),
+  },
 ];
 
 export function Codex({ onBack }: { onBack: () => void }) {

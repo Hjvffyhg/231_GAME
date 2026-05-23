@@ -13,6 +13,7 @@ import {
   Gamepad2,
   ArrowLeft,
   Trophy,
+  FileText,
 } from "lucide-react";
 import { cn } from "./lib/utils";
 import { GameCanvas, SchedulerAlgo } from "./components/GameCanvas";
@@ -35,8 +36,15 @@ export default function App() {
   const [finalScore, setFinalScore] = useState(0);
   const [civilizationLevel, setCivilizationLevel] = useState(0);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
-
   const [causeOfDeath, setCauseOfDeath] = useState<string>("SWARM_OVERWHELM");
+  const [lastRunStats, setLastRunStats] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem("lastRunStats");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     const initAudioOnFirstInteraction = () => {
@@ -61,11 +69,17 @@ export default function App() {
     score: number,
     victory: boolean = false,
     cause: string = "SWARM_OVERWHELM",
+    stats?: any
   ) => {
     setFinalScore(score);
     setIsGameOver(true);
     setIsVictory(victory);
     setCauseOfDeath(cause.toUpperCase());
+    if (stats) {
+      setLastRunStats(stats);
+      localStorage.setItem("lastRunStats", JSON.stringify(stats));
+    }
+
     if (victory) {
       soundManager.playWaveCompletion();
     } else {
@@ -105,7 +119,20 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#0A0F1F] text-slate-50 font-sans selection:bg-indigo-500/30 overflow-hidden h-[100dvh] relative">
+    <>
+      <div className="lg:hidden fixed inset-0 z-[9999] bg-[#0A0F1F] flex flex-col items-center justify-center p-8 text-center border-t-4 border-rose-500">
+        <div className="w-16 h-16 mb-6 text-rose-500 border border-rose-500/30 bg-rose-500/10 flex items-center justify-center" style={{ clipPath: "polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)" }}>
+          <Gamepad2 size={32} />
+        </div>
+        <h2 className="text-2xl font-mono font-bold text-white mb-2 uppercase tracking-widest drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]">
+          Desktop Required
+        </h2>
+        <p className="text-slate-400 font-sans font-light max-w-sm mt-4 leading-relaxed">
+          The Tactical Frame interface requires a desktop or laptop environment. Mobile and tablet visual inputs are unsupported for this simulation.
+        </p>
+      </div>
+
+      <div className="hidden lg:block min-h-[100dvh] bg-[#0A0F1F] text-slate-50 font-sans selection:bg-indigo-500/30 overflow-hidden h-[100dvh] relative">
       <AnimatePresence mode="wait">
         {view === "boot" ? (
           <motion.div key="boot" className="absolute inset-0 z-50">
@@ -159,6 +186,16 @@ export default function App() {
             className="absolute inset-0 z-50 bg-[#0A0F1F]"
           >
             <ShopScreen onBack={backToMenu} />
+          </motion.div>
+        ) : view === "report" ? (
+          <motion.div
+            key="report"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-[#0A0F1F]"
+          >
+            <Report onBack={backToMenu} stats={lastRunStats} />
           </motion.div>
         ) : view === "codex" ? (
           <motion.div
@@ -299,11 +336,11 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row justify-center gap-6 w-full">
+                        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 w-full">
                           <button
                             onClick={restart}
                             className={cn(
-                              "relative group/btn w-full overflow-hidden border min-h-[55px] flex items-center justify-center p-4 transition-all duration-300",
+                              "relative group/btn flex-1 min-w-[200px] overflow-hidden border min-h-[55px] flex items-center justify-center p-4 transition-all duration-300",
                               isVictory
                                 ? "border-emerald-500/50 bg-emerald-900/50 hover:bg-emerald-800/80"
                                 : "border-rose-500/50 bg-rose-900/40 hover:bg-rose-800/80",
@@ -345,9 +382,27 @@ export default function App() {
                           </button>
 
                           <button
+                            onClick={() => setView("report")}
+                            className={cn(
+                              "relative group/btn flex-1 min-w-[200px] overflow-hidden border min-h-[55px] flex items-center justify-center p-4 transition-all duration-300",
+                              "border-[#00D9FF]/50 bg-[#00D9FF]/10 hover:bg-[#00D9FF]/20 hover:border-[#00D9FF]",
+                            )}
+                            style={{
+                              clipPath:
+                                "polygon(8% 0, 100% 0, 100% 70%, 92% 100%, 0 100%, 0 30%)",
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#00D9FF]/0 via-[#00D9FF]/20 to-[#00D9FF]/0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000"></div>
+                            <div className="absolute left-0 top-0 w-1 h-full bg-[#00D9FF] group-hover/btn:bg-cyan-300 transition-colors"></div>
+                            <span className="relative z-10 font-mono text-sm md:text-base font-bold tracking-[0.2em] text-[#00D9FF] group-hover/btn:text-white transition-colors uppercase drop-shadow-lg flex items-center gap-3">
+                              <FileText className="w-5 h-5 pointer-events-none" /> VIEW REPORT
+                            </span>
+                          </button>
+
+                          <button
                             onClick={backToMenu}
                             className={cn(
-                              "relative group/btn w-full overflow-hidden border min-h-[55px] flex items-center justify-center p-4 transition-all duration-300",
+                              "relative group/btn flex-1 min-w-[200px] overflow-hidden border min-h-[55px] flex items-center justify-center p-4 transition-all duration-300",
                               "border-slate-600/50 bg-[#0A0F1F]/50 hover:bg-slate-800/80 hover:border-slate-400/50",
                             )}
                             style={{
@@ -358,7 +413,7 @@ export default function App() {
                             <div className="absolute inset-0 bg-gradient-to-r from-slate-500/0 via-slate-500/20 to-slate-500/0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000"></div>
                             <div className="absolute left-0 top-0 w-1 h-full bg-slate-700 group-hover/btn:bg-slate-300 transition-colors"></div>
                             <span className="relative z-10 font-mono text-sm md:text-base font-bold tracking-[0.2em] text-slate-300 group-hover/btn:text-white transition-colors uppercase drop-shadow-lg flex items-center gap-3">
-                              <ArrowLeft className="w-5 h-5" /> MAIN MENU
+                              <ArrowLeft className="w-5 h-5 pointer-events-none" /> MAIN MENU
                             </span>
                           </button>
                         </div>
@@ -376,5 +431,6 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

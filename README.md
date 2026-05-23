@@ -139,3 +139,12 @@ As you survive Waves, you earn **Credits**. Use these in the **Hangar Menu** bet
 *   **Tactical Map (HUD)**: A radar interface showing off-screen enemies and safe-zone boundaries. Clicking expands it to a full-screen Live Feed.
 *   **Swarm Observation**: While paused, access the Target Queue to see real-time algorithmic priorities and track DPS metrics against the Hive.
 *   **Database Codex**: Detailed logs unmasking Kla'ed lore, lethality metrics, and the underlying OS principles of the galaxy.
+
+---
+
+## 📦 Deployment & Final Submission
+
+* **Local Environment**: `npm run dev` starts the application on port 3000.
+* **School Submission**: `npm run build` compiles all React components and game logics into a centralized static HTML/JS/CSS web application in the `dist/` directory.
+
+> **Important**: For the Final Milestone itch.io submission requirements, please refer to the explicit **[Itch.io Deployment Guide](./docs/School_Requirements/ITCH_IO_DEPLOYMENT.md)**. This guide translates the final presentation guidelines into concrete packaging steps for our Vite application, ensuring it runs natively in the browser without issues.

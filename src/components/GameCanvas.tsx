@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { soundManager } from "../lib/audio";
-import { VirtualJoystick } from "./VirtualJoystick";
 import {
   loadShip,
   loadProjectile,
@@ -31,7 +30,7 @@ const ASSETS_CACHE: {
 
 interface GameCanvasProps {
   gameKey: number;
-  onGameOver: (score: number, isVictory?: boolean, cause?: string) => void;
+  onGameOver: (score: number, isVictory?: boolean, cause?: string, stats?: any) => void;
   onReturnMenu: () => void;
   civilizationLevel?: number;
 }
@@ -156,7 +155,7 @@ export function GameCanvas({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const isTouchDevice = false;
   const mobileMoveRef = useRef({ x: 0, y: 0, active: false });
   const mobileAimRef = useRef({ x: 0, y: 0, active: false });
 
@@ -179,14 +178,7 @@ export function GameCanvas({
 
   const asteroidSpriteRef = useRef<HTMLImageElement | null>(null);
 
-  useEffect(() => {
-    const onTouch = () => {
-      setIsTouchDevice(true);
-      window.removeEventListener("touchstart", onTouch);
-    };
-    window.addEventListener("touchstart", onTouch);
-    return () => window.removeEventListener("touchstart", onTouch);
-  }, []);
+  // Touch detection removed for desktop-only validation
 
   useEffect(() => {
     onGameOverRef.current = onGameOver;
@@ -407,8 +399,11 @@ export function GameCanvas({
       isPlayerInLeak: false,
       empTimer: 0,
       timeWithoutCombat: 0,
+      gameTime: 0,
       messageTimer: 0,
       score: 0,
+      kills: 0,
+      credits: 0,
       lastSpawnTime: lastTime / 1000,
       lastItemSpawnTime: lastTime / 1000,
       diffTimer: 0,
@@ -1108,6 +1103,9 @@ export function GameCanvas({
             "RESENTMENT ENGINE (EXECUTOR) DETECTED";
         }
       }
+
+      // Global timers
+      state.gameTime += dt;
 
       // 0.5. OS Awakening Logic
       if (state.enemies.length === 0) {
@@ -3191,6 +3189,7 @@ export function GameCanvas({
           if (!e.isDeadInit) {
             // First frame of death
             e.isDeadInit = true;
+            state.kills++;
             scoreGained += e.type.startsWith("boss")
               ? e.type === "boss"
                 ? 500
@@ -3302,7 +3301,12 @@ export function GameCanvas({
               state.isGameOver = true;
               soundManager.stopBGM();
               soundManager.setLowRamEffect(false);
-              onGameOverRef.current(state.score + scoreGained, true);
+              onGameOverRef.current(state.score + scoreGained, true, "", {
+                kills: state.kills,
+                credits: state.credits,
+                timeSurvived: state.gameTime,
+                algorithm: state.currentAlgo
+              });
             }
             return false;
           }
@@ -3310,6 +3314,7 @@ export function GameCanvas({
         return true;
       });
       state.score += scoreGained;
+      state.credits += scoreGained;
 
       // Collectibles
       state.collectibles.forEach((c: any) => {
@@ -3617,7 +3622,12 @@ export function GameCanvas({
 
         soundManager.stopBGM();
         soundManager.setLowRamEffect(false);
-        onGameOverRef.current(state.score, false, snapshot.causeOfDeath);
+        onGameOverRef.current(state.score, false, snapshot.causeOfDeath, {
+          kills: state.kills,
+          credits: state.credits,
+          timeSurvived: state.gameTime,
+          algorithm: state.currentAlgo
+        });
       }
 
       // 6. Drone Auto-Turret (CPU Scheduling mechanism visualization)
@@ -5760,158 +5770,7 @@ export function GameCanvas({
         </div>
       )}
 
-      {/* Mobile Controls Overlay */}
-      {isTouchDevice && (
-        <>
-          <div
-            className="absolute z-20 pointer-events-none"
-            style={{
-              left: `${hudLayout.moveJoystick.x}%`,
-              top: `${hudLayout.moveJoystick.y}%`,
-              transform: `translate(-50%, -50%) scale(${hudLayout.moveJoystick.scale})`,
-              opacity: hudLayout.moveJoystick.opacity,
-            }}
-          >
-            <div className="w-[120px] h-[120px] flex items-center justify-center pointer-events-auto rounded-full">
-              <VirtualJoystick
-                onMove={(x, y, active) => {
-                  mobileMoveRef.current = { x, y, active };
-                }}
-                size={120}
-                color="rgba(6, 182, 212, 1)"
-              />
-            </div>
-          </div>
-
-          <div
-            className="absolute z-20 pointer-events-none"
-            style={{
-              left: `${hudLayout.wpnBtn.x}%`,
-              top: `${hudLayout.wpnBtn.y}%`,
-              transform: `translate(-50%, -50%) scale(${hudLayout.wpnBtn.scale})`,
-              opacity: hudLayout.wpnBtn.opacity,
-            }}
-          >
-            <button
-              id="mobile-wpn-btn"
-              onClick={() => {
-                window.dispatchEvent(
-                  new KeyboardEvent("keydown", { key: "x" }),
-                );
-              }}
-              className="w-16 h-16 bg-[#EF4444]/20/60 border-2 border-[#EF4444] flex items-center justify-center text-[#EF4444] font-mono font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.4)] backdrop-blur-md active:bg-[#EF4444]/30 transition-transform active:scale-95 pointer-events-auto"
-              style={{
-                clipPath:
-                  "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
-              }}
-            >
-              WPN
-            </button>
-          </div>
-
-          <div
-            className="absolute z-20 pointer-events-none"
-            style={{
-              left: `${hudLayout.shdBtn.x}%`,
-              top: `${hudLayout.shdBtn.y}%`,
-              transform: `translate(-50%, -50%) scale(${hudLayout.shdBtn.scale})`,
-              opacity: hudLayout.shdBtn.opacity,
-            }}
-          >
-            <button
-              id="mobile-shd-btn"
-              onClick={() => {
-                window.dispatchEvent(
-                  new KeyboardEvent("keydown", { key: "e" }),
-                );
-              }}
-              className="w-16 h-16 bg-blue-950/60 border-2 border-blue-400 flex items-center justify-center text-blue-300 font-mono font-bold text-sm shadow-[0_0_15px_rgba(96,165,250,0.4)] backdrop-blur-md active:bg-blue-400/30 transition-transform active:scale-95 pointer-events-auto"
-              style={{
-                clipPath:
-                  "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
-              }}
-            >
-              SHIELD
-            </button>
-          </div>
-
-          <div
-            className="absolute z-20 pointer-events-none"
-            style={{
-              left: `${hudLayout.ocBtn.x}%`,
-              top: `${hudLayout.ocBtn.y}%`,
-              transform: `translate(-50%, -50%) scale(${hudLayout.ocBtn.scale})`,
-              opacity: hudLayout.ocBtn.opacity,
-            }}
-          >
-            <button
-              id="mobile-oc-btn"
-              onClick={() => {
-                window.dispatchEvent(
-                  new KeyboardEvent("keydown", { key: "f" }),
-                );
-              }}
-              className="w-16 h-16 bg-fuchsia-950/60 border-2 border-fuchsia-400 flex items-center justify-center text-fuchsia-300 font-mono font-bold text-sm shadow-[0_0_15px_rgba(217,70,239,0.4)] backdrop-blur-md active:bg-fuchsia-400/30 transition-transform active:scale-95 pointer-events-auto"
-              style={{
-                clipPath:
-                  "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
-              }}
-            >
-              OVERDRIVE
-            </button>
-          </div>
-
-          <div
-            className="absolute z-20 pointer-events-none"
-            style={{
-              left: `${hudLayout.dshBtn.x}%`,
-              top: `${hudLayout.dshBtn.y}%`,
-              transform: `translate(-50%, -50%) scale(${hudLayout.dshBtn.scale})`,
-              opacity: hudLayout.dshBtn.opacity,
-            }}
-          >
-            <button
-              id="mobile-boost-btn"
-              data-active="false"
-              onPointerDown={(e) => {
-                e.currentTarget.dataset.active = "true";
-              }}
-              onPointerUp={(e) => {
-                e.currentTarget.dataset.active = "false";
-              }}
-              onPointerCancel={(e) => {
-                e.currentTarget.dataset.active = "false";
-              }}
-              className="w-14 h-14 bg-[#151f3d]/60 border border-slate-300 flex items-center justify-center text-slate-200 font-mono font-bold text-xs shadow-[0_0_10px_rgba(255,255,255,0.2)] backdrop-blur-md active:bg-slate-400/30 transition-transform active:scale-95 pointer-events-auto"
-              style={{
-                clipPath: "polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%)",
-              }}
-            >
-              BOOST
-            </button>
-          </div>
-
-          <div
-            className="absolute z-20 pointer-events-none"
-            style={{
-              left: `${hudLayout.aimJoystick.x}%`,
-              top: `${hudLayout.aimJoystick.y}%`,
-              transform: `translate(-50%, -50%) scale(${hudLayout.aimJoystick.scale})`,
-              opacity: hudLayout.aimJoystick.opacity,
-            }}
-          >
-            <div className="w-[120px] h-[120px] flex items-center justify-center pointer-events-auto rounded-full">
-              <VirtualJoystick
-                onMove={(x, y, active) => {
-                  mobileAimRef.current = { x, y, active };
-                }}
-                size={120}
-                color="rgba(244, 63, 94, 1)"
-              />
-            </div>
-          </div>
-        </>
-      )}
+      
 
       <canvas
         ref={canvasRef}
@@ -5969,7 +5828,22 @@ export function GameCanvas({
                 SYSTEM SETTINGS
               </button>
               <button
-                onClick={onReturnMenu}
+                onClick={() => {
+                  soundManager.stopBGM();
+                  soundManager.setLowRamEffect(false);
+                  
+                  if (gameStateRef.current) {
+                    gameStateRef.current.isGameOver = true;
+                    onGameOverRef.current(gameStateRef.current.score, false, "MISSION ABORTED", {
+                      kills: gameStateRef.current.kills,
+                      credits: gameStateRef.current.credits,
+                      timeSurvived: gameStateRef.current.gameTime,
+                      algorithm: gameStateRef.current.currentAlgo
+                    });
+                  } else {
+                    onReturnMenu();
+                  }
+                }}
                 className="bg-[#0d1428] hover:bg-[#EF4444]/20 border border-rose-900/50 hover:border-[#EF4444] text-[#EF4444] hover:text-[#EF4444] px-8 py-4 font-mono font-bold tracking-widest transition-all active:scale-95"
               >
                 ABORT MISSION
