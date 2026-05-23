@@ -1666,3 +1666,16 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 2. **Final High-Density Design:** Generated the final infographic poster `infographic_poster_with_qr_and_ships_1779511214698.png`. The design leaves no empty spaces, formatting a dense sci-fi tactical dashboard. It embeds the black-and-white QR code in a "SCAN TO DEPLOY" panel on the bottom-right.
 3. **Crew Station Integration:** Added the 5 team member names at the bottom, assigning a pixel-art ship sprite to each. Labeled and designed Mark Justine Almario's ship as a massive, upgraded Dreadnought, while assigning smaller class ships to the other four members.
 4. **Infographic Artifact Update:** Overwrote `infographic_poster.md` in the artifacts directory to embed the final design and catalog the team members' ships and QR code linkages.
+
+## 255. Poster Layout Revision (Menu Buttons, Drones, Bosses)
+> "I want you to create or use the game asset. The spaceship didn't align as the spaceship nung game. Then, dito nakita ko is may mga error, ito sa paano, sa Round Robin may error. You don't need to ipakita yung process then yung application. Pwede lang siyang description or explanation para that. You can just display then the boss dito sa First Come First Serve, Round Robin, HRRN. Display mo din yung drone saka boss. Then, may control din. You don't need to show the formula para lang ipakita na algorithm yun. Dito sa baba pansin ko is good naman. But, masyadong malaki tong crustacean na to. I think, liitan liitan mo to ng konti. Palakihin mo na lang tong tatlong algorithm na to. Then, yun. For example nito, gayahin mo yung, di ba may button ako dun sa main menu na lima. So, parang ganun yung layout niya. "
+
+**Result:**
+1. **Infographic Poster v2 Design:** Generated a revised infographic poster `final_infographic_poster_v2_1779511714660.png` addressing the user's specific feedback:
+   - Replaced general spaceship sprites with designs aligning exactly with the game's actual spaceship assets.
+   - Styled the three algorithm panels (FCFS, RR, HRRN) to replicate the 5 angled, futuristic, cyan-glowing buttons from the game's Main Menu.
+   - Scaled down the "Crew Station" (bottom panel) to allocate more vertical space to the algorithm sections.
+   - Replaced mathematical formulas with clear, simplified descriptions/explanations of each targeting logic.
+   - Embedded visual representations of the player's targeting drone and respective wave boss (Goliath, Cycler, Executor) within each algorithm panel.
+   - Added a clear 'Controls' reference panel listing movement, shooting, and scheduling keys.
+2. **Infographic Artifact Update:** Overwrote `infographic_poster.md` in the artifacts directory to embed the final revised design.
