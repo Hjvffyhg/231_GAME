@@ -1639,3 +1639,8 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 4. **Controls & Input:** Grid-based mapping of WASD movement, mouse aiming/priorities, and active ability keys (`Shift/C`, `E`, `F`, `Q`, `Y`, `G`, etc.).
 5. **HUD Breakdown:** Detailed description of every screen quadrant (Hull Telemetry, Mission Telemetry, Target CPU Queue, Radar, Ability Triggers).
 6. **Core Game Systems:** OS algorithms (FCFS, RR, HRRN) mapped as drones, active abilities, enemy classes, boss mechanics, star charts, hangar upgrades, codex databases, and itch.io deployment steps.
+
+## 252. Update Database and Mission Report Screenshots
+> "change the ss of database and system report"
+
+**Result:** Replaced the older screenshot files `docs/screenshots/Database_info.png` and `docs/screenshots/Mission_report.png` with the new, high-quality, actual game interface images provided by the user. This updates the visual assets used in the `README.md` and project documentation to accurately show the modern pixelated style of the Database archives and the finished Mission Report layout.
