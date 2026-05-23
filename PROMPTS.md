@@ -1691,3 +1691,13 @@ Generated a high-quality cover image for the game to be used for its itch.io pag
 
 **Result:**
 Regenerated the academic infographic poster using the original 10"x15" layout parameters. It features the futuristic cyan-glowing buttons from the game's menu as the algorithm panels, the QR code, the crew names with their corresponding custom spaceship designs, simplified descriptions, and the Companion Drones/Bosses. Saved the poster to `docs/screenshots/infographic_poster_v2.png` and `infographic_poster_v2.png`.
+
+## 258. Infographic Poster Layout Revisions (Aspect Ratio, Names Only)
+> "Um, the size is not um. Like follow the rules. Follow the guidelines like the size. of the poster infographics. Then as I see here,  Make it a name na lang without a spaceship. Then make it, uh, all, make it this, uh, poster readable. And, add some uh, visual effects. Or component that related to the infographics."
+
+**Result:**
+Regenerated the infographic poster addressing layout feedback:
+1. Centered a 2:3 aspect ratio (10"x15") vertical layout template in the frame with black borders on the left/right for accurate physical cropping.
+2. Removed all spaceship sprites from next to the 5 team member names in the Crew Station footer.
+3. Enhanced legibility and academic relevance by embedding process scheduling Gantt chart timelines in the FCFS, RR, and HRRN sections, alongside glowing HUD circular radar dials and line dividers.
+Copied the revised v3 files to `/docs/screenshots/infographic_poster_v3.png` and `/infographic_poster_v3.png` (and updated the v2 versions).
