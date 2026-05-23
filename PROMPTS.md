@@ -1657,3 +1657,12 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
    - Comprehensive integration write-up on CPU scheduling algorithms (FCFS, RR, and HRRN) as drones (CPU cores) processing enemies (threads) in the ready queue, complete with the HRRN response ratio math.
    - Explanations of boss mechanics (The Cycler and The Executor) linked directly to scheduling behavior.
    - Specifications on simulation testing via AI Autopilot (Auto-Pilot) mode, black hole time-dilation physics, and a Mermaid system flowchart.
+
+## 254. Crew Station and QR Code Poster Upgrades
+> "generate a qr for that image i attached, In the infographic design, make it fit. All of the side have a components or design that there's no space na makikita. Then, ilagay mo din ito, yung QR na generate mo, ilagay mo siya sa maybe kung saan magandang ilagay. Then, kahit sa baba na lang yung pangalan namin, yung grupo namin. Then, lagyan mo ng spaceship. Di ba, pangalan ko, then pangalan lahat, di ba, five members kami doon. Lagyan mo ng spaceship per name. Yung apat na spaceship, then Mark Justine Almario, yung pinakamalaking ship, then upgradable.And make this presentable."
+
+**Result:**
+1. **QR Code Download:** Wrote a Node.js script to download a clean PNG QR code `docs/screenshots/game_qr.png` encoding the itch.io URL (`https://justin-e7.itch.io/space-survival`) shown in the user's attachment.
+2. **Final High-Density Design:** Generated the final infographic poster `infographic_poster_with_qr_and_ships_1779511214698.png`. The design leaves no empty spaces, formatting a dense sci-fi tactical dashboard. It embeds the black-and-white QR code in a "SCAN TO DEPLOY" panel on the bottom-right.
+3. **Crew Station Integration:** Added the 5 team member names at the bottom, assigning a pixel-art ship sprite to each. Labeled and designed Mark Justine Almario's ship as a massive, upgraded Dreadnought, while assigning smaller class ships to the other four members.
+4. **Infographic Artifact Update:** Overwrote `infographic_poster.md` in the artifacts directory to embed the final design and catalog the team members' ships and QR code linkages.
