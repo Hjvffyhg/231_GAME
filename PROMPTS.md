@@ -1649,9 +1649,10 @@ Because the previous fix elevated the Right HUD wrapper to `z-[99]` to ensure hi
 > "Can you generate an infographic poster for this game?  Use the asset and some screenshots. Use all the asset, not all the asset, but you can kumuha ng idea doon sa asset para pang-design doon sa poster infographics. Make it align with the theme of the game. And also for the game mechanics, there's a guideline about that. I think I created an md file for that, but I think it's not that detailed and a lack of information."
 
 **Result:** 
-1. **Infographic Poster Design:** Generated a high-resolution academic infographic poster `game_infographic_poster_1779510040606.png` matching the 1/8 illustration board requirements (10 inches by 15 inches). The poster compiles the game title, concepts, CPU scheduling drone integration (FCFS, RR, HRRN), system flowchart, upgrades, and features.
-2. **Infographic Poster Artifact:** Created `infographic_poster.md` inside the artifacts directory, detailing the design modules and embedding the generated high-res image.
-3. **Gameplay Mechanics Documentation:** Fully rewrote `PROGRESS_REPORT_2_GAMEPLAY.md` with complete and detailed game mechanics including:
+1. **Infographic Poster Design:** Generated a high-resolution academic infographic poster `game_infographic_poster_1779510040606.png` matching the 1/8 illustration board requirements (10 inches by 15 inches). 
+2. **Aspect Ratio Verification & Secondary Variant:** Verified the generated image dimensions (1024x1024 pixels, 1:1 ratio). Since physical guidelines require 10"x15" (2:3 aspect ratio), generated a second, more vertically-dense layout variant `vertical_infographic_poster_1779510599027.png` to act as an alternate layout.
+3. **Infographic Poster Artifact:** Created `infographic_poster.md` inside the artifacts directory, detailing the design modules, explaining the 2:3 aspect ratio printing setup instructions in Canva, and displaying both variants in an interactive carousel.
+4. **Gameplay Mechanics Documentation:** Fully rewrote `PROGRESS_REPORT_2_GAMEPLAY.md` with complete and detailed game mechanics including:
    - Detailed control configurations for keyboard/mouse and Mobile Legends-style twin joysticks.
    - Comprehensive integration write-up on CPU scheduling algorithms (FCFS, RR, and HRRN) as drones (CPU cores) processing enemies (threads) in the ready queue, complete with the HRRN response ratio math.
    - Explanations of boss mechanics (The Cycler and The Executor) linked directly to scheduling behavior.
